@@ -82,7 +82,7 @@ void Menu::drawMenu(const vector<Stationinfo>& items)
     Display.setFont(&digital_712pt7b);
     String spacingstring="MAX STATION SIZE 123";
     Display.getTextBounds(spacingstring,0,0,&xpos,&ypos,&w,&h);
-    cellheight=h*1.5;   //add padding to the height of the cell
+    cellheight=h*1.5;   //⁡⁣⁣⁢𝗮𝗱𝗱 𝗽𝗮𝗱𝗱𝗶𝗻𝗴 𝘁𝗼 𝘁𝗵𝗲 𝗵𝗲𝗶𝗴𝗵𝘁 𝗼𝗳 𝘁𝗵𝗲 𝗰𝗲𝗹𝗹⁡
     int maxpixels=w;
 
     //draw a grid and menu items
@@ -108,29 +108,44 @@ void Menu::drawMenu(const vector<Stationinfo>& items)
         
         
     }
-    int x=select_from_Menu();
+    
 
 }
 
 //------------------------------------------------------------------------------
 int Menu::select_from_Menu()
 {
-
+    int screenX, screenY;
 
 if(touchScreen.touched())
     {
         TS_Point p;
         p=touchScreen.getPoint();
 
-        int screenX=map(p.y,350,3800,0,239);        //flipping X and Y
-        int screenY=map(p.x,3800,300,0,319);
-        screenX=constrain(screenX,0,239);
-        screenY=constrain(screenY,0,319);
+        int rawX=map(p.y,350,3800,0,239);        //flipping X and Y
+        int rawY=map(p.x,3800,300,0,319);
+        screenX=constrain(rawX,0,239);           //actual screen coords
+        screenY=constrain(rawY,0,319);
 
         Display.fillCircle(screenX,screenY,2,ILI9341_CYAN);
 
      
     }
+        //⁡⁣⁢⁣𝗧𝗿𝗮𝗻𝘀𝗹𝗮𝘁𝗲 𝗽𝗼𝘀𝗶𝘁𝗶𝗼𝗻 𝘁𝗼 𝗺𝗲𝗻𝘂 𝗰𝗵𝗼𝗶𝗰𝗲...𝘁𝗵𝗲 𝗺𝗮𝗴𝗶𝗰!⁡
+        if((screenX>menuoffX) && (screenX<menuoffX+menuWidth)
+            &&(screenY>menuoffY)&&(screenY<cellheight*10+menuoffY))
+        {
+            Serial.print(screenX);
+            Serial.print(", ");
+            Serial.print(screenY);
+            Serial.print("    menu choice: ");
+
+            //in the choice zone
+            int choice=(screenY-menuoffY)/cellheight;
+            Serial.println(choice);
+
+
+        }
 
     return 0;
 }

@@ -39,6 +39,9 @@ double lastmenu=millis();   //start the clock
 float menuInterval=500.0;
 bool menuflag=false;
 
+double lastTouch=millis();
+float touchInterval=100.0;
+
 
 
 #define Push_Button A5
@@ -153,6 +156,13 @@ void loop()
                 }
 
         }
+
+    if((millis()-lastTouch)>touchInterval)
+    {
+        menu.select_from_Menu();
+        lastTouch=millis();
+    }
+
 
     audio.loop();    // must hit this every time
     

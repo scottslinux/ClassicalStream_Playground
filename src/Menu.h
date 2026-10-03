@@ -36,7 +36,7 @@ class Menu{
         void drawMenu(const vector<String>&); //pass by immutable reference string vector
         void drawMenu(const vector<Stationinfo>&); //overloaded..pass stationinfo structure
         int select_from_Menu();
-        
+        void pulseCircle(bool flag);
         
 
 

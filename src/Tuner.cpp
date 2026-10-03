@@ -13,7 +13,7 @@ Tuner::Tuner()
     stationList.resize(50);
     pinMode(A4,INPUT);
 
-    //flesh out the tag menu with Genres
+    //flesh out the tag vector with Genres
     genres = {
     "rock",
     "pop",

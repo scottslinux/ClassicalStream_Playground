@@ -9,6 +9,7 @@
 #include "secrets.h"
 #include "Tuner.h"
 #include "Menu.h"
+#include "Airboss.h"
 
 
 
@@ -29,18 +30,18 @@ uint8_t cur_volume =15;
 Adafruit_ILI9341 tft(CS,DC,Reset);
 XPT2046_Touchscreen ts(touch_CS);
 
+// instantiate the objects
 Audio audio;
-
 Tuner tuner;
-
 Menu menu(tft, ts); //send a handle to the tft & touch context to menu
+Airboss airboss(menu,tuner);
 
 double lastmenu=millis();   //start the clock
 float menuInterval=500.0;
 bool menuflag=false;
 
 double lastTouch=millis();
-float touchInterval=100.0;
+float touchInterval=200.0;
 
 
 
@@ -98,7 +99,7 @@ void setup() {
 
 
 
-    cur_volume=max_volume* 0.6;
+    cur_volume=max_volume* 0.65;
 
     audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
     audio.setVolume(cur_volume); // 0...21
@@ -140,33 +141,10 @@ void setup() {
 void loop() 
 {
 
-    if((millis()-lastmenu) > menuInterval)
-        {
-            menu.drawMenu(tuner.stationList); 
-            lastmenu=millis();
-            if(menuflag)
-            {
-                tft.fillCircle(200,290,10,ILI9341_GREEN);
-                menuflag=false;
-            }
-                else
-                {
-                    tft.fillCircle(200,290,10,ILI9341_RED);
-                    menuflag=true;
-                }
-
-        }
-
-    if((millis()-lastTouch)>touchInterval)
-    {
-        menu.select_from_Menu();
-        lastTouch=millis();
-    }
-
-
-    audio.loop();    // must hit this every time
     
+    audio.loop();    // must hit this every time
 
+    airboss.stateMonitor(); // manage program floaw
     
 
 }

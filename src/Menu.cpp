@@ -149,4 +149,13 @@ if(touchScreen.touched())
 
     return 0;
 }
-
+//------------------------------------------------------------------------------
+void Menu::pulseCircle(bool flag)
+{
+    if(flag)
+      Display.fillCircle(200,290,10,ILI9341_GREEN);
+        else
+            Display.fillCircle(200,290,10,ILI9341_RED);
+           
+    
+}

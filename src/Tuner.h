@@ -16,7 +16,8 @@ class Tuner
 {
     private:
 
-        std::vector<String> genres;
+        
+
         
 
 
@@ -24,12 +25,17 @@ class Tuner
 
     public:
 
+        int currvol=15;
+        int volDx=1;
+        std::vector<String> genres;
         std::vector<Stationinfo> stationList;   //make this list available to main
 
         Tuner();
         ~Tuner();
 
-        Stationinfo getStationChoices();
+        Stationinfo getStationChoices(String genreChoice);
+        void volumeUp();
+        void volumeDown();
         
 
 

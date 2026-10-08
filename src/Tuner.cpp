@@ -6,11 +6,11 @@
 #include <algorithm>   // std::shuffle
 #include <random>      // std::mt19937
 
-
+#define stationNum 20
 //******************************************************* */
 Tuner::Tuner()
 {
-    stationList.resize(50);
+    stationList.resize(stationNum);
     pinMode(A4,INPUT);
 
     //flesh out the tag vector with Genres
@@ -38,7 +38,7 @@ Tuner::~Tuner()
 
 
 //******************************************************* */
-Stationinfo Tuner::getStationChoices()
+Stationinfo Tuner::getStationChoices(String genreChoice)
 {
     String payload;
     JsonDocument doc;
@@ -49,12 +49,13 @@ Stationinfo Tuner::getStationChoices()
 
     static std::mt19937 rng(esp_random());   // random number generator, seeded once
 
+    String test=genreChoice;
 
    httpclient.begin(
     "https://de1.api.radio-browser.info/json/stations/search"
-    "?tag=classical"
+    "?tag="+test+
     "&countrycode=US"
-    "&limit=50"
+    "&limit=20"
     "&hidebroken=true"
 );
     httpclient.addHeader("User-Agent", "ScottESP32Radio/1.0");  //RadioBrowser requests adding descriptive USER-AGENT
@@ -82,7 +83,7 @@ httpclient.end();
       }
       else  //it worked!  Parse it
       {
-        for(int i=0;i<50;i++)
+        for(int i=0;i<stationNum;i++)
             {
                 
 
@@ -95,8 +96,8 @@ httpclient.end();
             
         
       }
-
-      for (int i=0;i<50;i++)
+/*
+      for (int i=0;i<stationNum;i++)
       {
         Serial.println("*********************************************************");
         Serial.print("Station Name: ");
@@ -104,19 +105,21 @@ httpclient.end();
         Serial.println(stationList[i].url_resolved);
       }
 
-      std::shuffle(stationList.begin(),stationList.end(), rng);
+      
 
-      for (int i=0;i<50;i++)
+      for (int i=0;i<stationNum;i++)
       {
         Serial.println("*******************SHUFFLED****************************");
         Serial.print("Station Name: ");
         Serial.println(stationList[i].Name);
         Serial.println(stationList[i].url_resolved);
       }
-
+*/
+      std::shuffle(stationList.begin(),stationList.end(), rng);
+      
       int choice;
       do{
-          choice=esp_random()%50; //choose a site until a valid one comes up
+          choice=esp_random()%stationNum; //choose a site until a valid one comes up
           
 
         }while (stationList[choice].Name ==NULL); 
@@ -130,6 +133,25 @@ httpclient.end();
         
 
 return(currstation);
+}
+//******************************************************* */
+void Tuner::volumeUp()
+{
+  if((currvol+volDx)<=21)
+    currvol+=volDx;
+
+    
+  
+}
+//******************************************************* */
+void Tuner::volumeDown()
+{
+  if((currvol-volDx)>=0)
+    currvol-=volDx;
+
+    
+  
+}
 //******************************************************* */
 
 
@@ -139,5 +161,4 @@ return(currstation);
 
 
 
-}
         

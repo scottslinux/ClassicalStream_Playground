@@ -2,6 +2,7 @@
 #include <Preferences.h>
 #include <SPI.h>
 #include <WiFi.h>
+#include <ArduinoOTA.h>
 #include <Adafruit_ILI9341.h>
 #include <Adafruit_GFX.h>
 #include <XPT2046_Touchscreen.h>
@@ -34,7 +35,7 @@ XPT2046_Touchscreen ts(touch_CS);
 Audio audio;
 Tuner tuner;
 Menu menu(tft, ts); //send a handle to the tft & touch context to menu
-Airboss airboss(menu,tuner);
+Airboss airboss(menu,tuner,audio); //airboss needs control of assets everything but display
 
 double lastmenu=millis();   //start the clock
 float menuInterval=500.0;
@@ -90,7 +91,17 @@ void setup() {
 
     connectWiFi();      //go get some
 
-    Stationinfo newStation=tuner.getStationChoices();
+    if(WiFi.status()==WL_CONNECTED)     //enable over-the-air updates
+    {
+        ArduinoOTA.setHostname("classicalradio");
+        ArduinoOTA.setPassword(OTA_PASSWORD);
+        ArduinoOTA.onStart([]() { audio.stopSong(); Serial.println("OTA start"); });
+        ArduinoOTA.onEnd([]()   { Serial.println("\nOTA done"); });
+        ArduinoOTA.onError([](ota_error_t e) { Serial.printf("OTA error %u\n", e); });
+        ArduinoOTA.begin();
+    }
+
+    Stationinfo newStation; //prepare the variable that will receive a single new station
 
     ts.begin(); //touchscreen begin
 
@@ -103,15 +114,12 @@ void setup() {
 
     audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
     audio.setVolume(cur_volume); // 0...21
-    audio.connecttohost(newStation.url_resolved.c_str());
 
     Serial.println("---------------");
     Serial.println((newStation.Name).c_str());
 
 
     
-    tft.fillRoundRect(0,0,240,320,10,ILI9341_WHITE);
-    tft.fillRoundRect(6,6,228,308,10,ILI9341_BLACK);
     
     
 
@@ -134,14 +142,14 @@ void setup() {
 */
     vector<String> test={"some station","Another one","A longer station than oyu can imagine",
         "one more..."};
-    menu.drawMenu(tuner.stationList);    //test the handle!
+   // menu.drawMenu(tuner.stationList);    //test the handle!
 }
 
 //-----------------------------------------------------
 void loop() 
 {
+    ArduinoOTA.handle();    //listen for OTA uploads
 
-    
     audio.loop();    // must hit this every time
 
     airboss.stateMonitor(); // manage program floaw

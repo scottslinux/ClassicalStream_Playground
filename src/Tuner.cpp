@@ -50,6 +50,7 @@ Stationinfo Tuner::getStationChoices(String genreChoice)
     static std::mt19937 rng(esp_random());   // random number generator, seeded once
 
     String test=genreChoice;
+    unsigned long now=millis();
 
    httpclient.begin(
     "https://de1.api.radio-browser.info/json/stations/search"
@@ -58,14 +59,20 @@ Stationinfo Tuner::getStationChoices(String genreChoice)
     "&limit=20"
     "&hidebroken=true"
 );
+    httpclient.setTimeout(5000);
+
     httpclient.addHeader("User-Agent", "ScottESP32Radio/1.0");  //RadioBrowser requests adding descriptive USER-AGENT
+
+    Serial.println("Starting GET");
 
     int httpCode = httpclient.GET();
 
     if (httpCode > 0) 
     {
         payload = httpclient.getString();
-        //Serial.println(payload);
+        Serial.print("HTTP Code: ");
+        Serial.println(httpCode);
+        Serial.println(millis()-now);
 
         
     }

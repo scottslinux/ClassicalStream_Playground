@@ -59,7 +59,7 @@ if((millis()-lastMenu) > menuInterval)
             Serial.print("Art Item: ");
             Serial.println(pendingChoice);
 
-            menu.drawart(4);
+            menu.drawart(pendingChoice);
 
             tuner.getStationChoices(tuner.genres[pendingChoice]);
             pendingChoice=-999; //reset pending choice
@@ -88,6 +88,7 @@ if((millis()-lastMenu) > menuInterval)
             menu.drawFrame();
             menu.drawart(ArtImage::blank);
             menu.drawMenu(tuner.stationList);
+            menu.draWAudioControls();
 
             dirtyDisplay=false;
         }
@@ -121,8 +122,9 @@ if((millis()-lastMenu) > menuInterval)
         {
             menu.clearMenu();
             
-            menu.drawFrame();
+            menu.draWAudioControls();
             menu.drawart(menu.currGenre);
+            menu.drawPlayingStation(selectedStation.Name.c_str());
             
 
             audio.connecttohost(selectedStation.url_resolved.c_str());
@@ -209,11 +211,24 @@ if((millis()-lastTouch)>touchInterval)
             break;
 
         case 4: //back button
-            audio.stopSong();
-            radioState=States::Results_Display;
-            dirtyDisplay=true;
+        {
+            
+            if(radioState==States::Play_RadioStation)
+                {
+                    radioState=States::Results_Display;
+                    audio.stopSong();
+                    dirtyDisplay=true;
+                }
+                else
+                    if(radioState!=States::Select_Genre)
+                    {
+                        radioState=States::Select_Genre;
+                        dirtyDisplay=true;
+                    }
+
+            
             break;
-        
+        }
         
         default:
             break;

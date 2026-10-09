@@ -210,32 +210,7 @@ void Menu::pulseCircle(bool flag)
            
     
 }
-//-----------------------------------------------------------------------------
-//      Audio Controls
-void Menu::draWAudioControls()
-{
-    
 
-    //Draw UI Controls
-    
-    
-    
-    Display.setFont(&FreeMonoBold12pt7b);
-    Display.setCursor(27,295);
-    Display.setTextColor(ILI9341_BLACK);
-    Display.print("X");
-
-    Display.setCursor(58,295);
-    Display.print("PLAY");
-
-    Display.setCursor(125,295);
-    Display.print("-");
-    Display.setCursor(156,295);
-    Display.print("+");
-
-    Display.setCursor(210,295);
-    Display.print("<");
-}
 //------------------------------------------------
 void Menu::drawFrame()
 {
@@ -244,9 +219,12 @@ void Menu::drawFrame()
     //Draw UI Frame
     Display.fillRoundRect(0,0,230,280,10,ILI9341_WHITE);
     Display.fillRoundRect(6,6,218,270,10,ILI9341_BLACK);
+}
+//------------------------------------------------
 
-    draWAudioControls();
-    
+
+void Menu::draWAudioControls()
+{    
     Display.drawRGBBitmap(5,280,bpu_40x40,40,40);
     Display.drawRGBBitmap(50,280,vol_lessd40x40,40,40);
     Display.drawRGBBitmap(95,280,volu40x40,40,40);
@@ -311,6 +289,25 @@ void Menu::drawart(int currimage)
 void Menu::clearMenu()
 {
     Display.fillScreen(ILI9341_BLACK);
+
+
+}
+//------------------------------------------------------------
+void Menu::drawPlayingStation(String playing)
+{
+    uint16_t w,h;
+    int16_t XX,YY;
+
+    playing=playing.substring(0,20);    //truncate to 15 characters
+    Display.setFont(&digital_712pt7b);
+    Display.setTextColor(ILI9341_WHITE);
+    Display.getTextBounds(playing,0,0,&XX,&YY,&w,&h);
+    Display.setCursor((240/2)-(w/2),255);
+
+
+
+    Display.print(playing);
+
 
 
 }

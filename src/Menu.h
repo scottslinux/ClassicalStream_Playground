@@ -48,6 +48,7 @@ class Menu{
         void drawFrame();
         void drawart(ArtImage currimage);
         void drawart(int currimage);
+        void drawPlayingStation(String playing);
 
         void clearMenu();
         

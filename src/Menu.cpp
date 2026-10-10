@@ -2,22 +2,17 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
+#include <Fonts/FreeSansBold18pt7b.h>
 #include "Tuner.h"
 #include <violin200x150.h>
 #include <saxophone_135x180.h>
 #include <guitar_135x180.h>
 #include <microphone_130x173.h>
-#include <bpu_40x40.h>
-#include <bpd_40x40.h>
-#include <bpauseu40x40.h>
-#include <bpaused40x40.h>
-#include <backd40x40.h>
-#include <backu40x40.h>
-#include <volu40x40.h>
-#include <vol_lessd40x40.h>
-#include <favu40x40.h>
 #include <radiodial_240x87.h>
-
+#include <frame_240x320.h>
+#include <buttonPanel_240x55.h>
+#include <highlight45x55.h>
+#include <yellowring35x35.h>    //actually it is a blue ring
 
 
 
@@ -155,6 +150,7 @@ if(touchScreen.touched())
         screenX=constrain(rawX,0,239);           //actual screen coords
         screenY=constrain(rawY,0,319);
 
+        Serial.printf("X:%d, Y:%d\n",screenX,screenY);
 
         //touch is activated..is the position within the max 10 menu positions
     
@@ -215,22 +211,27 @@ void Menu::pulseCircle(bool flag)
 void Menu::drawFrame()
 {
     
-    Display.fillScreen(ILI9341_BLACK);
+    //Display.fillScreen(ILI9341_BLACK);
     //Draw UI Frame
-    Display.fillRoundRect(0,0,230,280,10,ILI9341_WHITE);
-    Display.fillRoundRect(6,6,218,270,10,ILI9341_BLACK);
+    //Display.fillRoundRect(0,0,230,280,10,ILI9341_WHITE);
+    //Display.fillRoundRect(6,6,218,270,10,ILI9341_BLACK);
+
+    Display.drawRGBBitmap(0,0,frame_240x320,240,320);
 }
 //------------------------------------------------
 
 
 void Menu::draWAudioControls()
-{    
+{   
+    /*
     Display.drawRGBBitmap(5,280,bpu_40x40,40,40);
     Display.drawRGBBitmap(50,280,vol_lessd40x40,40,40);
     Display.drawRGBBitmap(95,280,volu40x40,40,40);
     Display.drawRGBBitmap(140,280,favu40x40,40,40);
     Display.drawRGBBitmap(185,280,backd40x40,40,40);
-    
+    */
+
+    Display.drawRGBBitmap(0,265,buttonPanel_240x55,240,55);
 
 }
 //-----------------------------------------------------
@@ -258,7 +259,7 @@ void Menu::drawart(ArtImage currimage)
 //---------------------------------------------------------
 void Menu::drawart(int currimage)
 {
-    currGenre=currimage;    //register this for use later
+    
 
     switch (currimage)
     {
@@ -277,8 +278,13 @@ void Menu::drawart(int currimage)
         Display.drawRGBBitmap(50,50,saxophone_135x180,135,180);
         break;
     
-        case 4:
+    case 4:
+    
         Display.drawRGBBitmap(0,100,radiodial,240,87);
+        Display.setFont(&FreeSansBold18pt7b);
+        Display.setTextColor(ILI9341_WHITE);
+        Display.setCursor(25,220);
+        Display.print("Loading...");
     
 
     default:
@@ -298,18 +304,109 @@ void Menu::drawPlayingStation(String playing)
     uint16_t w,h;
     int16_t XX,YY;
 
-    playing=playing.substring(0,20);    //truncate to 15 characters
-    Display.setFont(&digital_712pt7b);
-    Display.setTextColor(ILI9341_WHITE);
-    Display.getTextBounds(playing,0,0,&XX,&YY,&w,&h);
-    Display.setCursor((240/2)-(w/2),255);
+    //playing=playing.substring(0,20);    //truncate to 15 characters
+    int gap=50;
+
+    canvas.fillScreen(ILI9341_BLACK);
+    canvas.setTextWrap(false);
+    canvas.setFont(&FreeSansBold18pt7b);
+    canvas.setTextColor(ILI9341_WHITE);
+    canvas.getTextBounds(playing,0,0,&XX,&YY,&w,&h);
+
+    canvas.setCursor((scrollX),40);
+    canvas.print(playing);
+    canvas.setCursor((scrollX+w+gap),40);
+    canvas.print(playing);
 
 
+    scrollX-=1; //scroll 
+    if((scrollX)<(-1*(w+gap)))
+        scrollX=0; 
 
-    Display.print(playing);
+
+    
+    Display.drawRGBBitmap(0,220,canvas.getBuffer(),240,45);
+
+    Serial.println(playing);
+    Serial.println(w);
+
+    
 
 
 
 }
+//----------------------------------------------------------------------------------------
+void Menu::resetScroll()
+{
+    scrollX=0;
+}
+//----------------------------------------------------------------------------------------
+void Menu::buttonPressed(int button)
+
+{
+    int buttonspace=46;
+    int centerx=10+button*buttonspace;
+    int centery=276;
+
+    
+
+    blitImage(yellowring35x35,35,35,centerx,centery);
 
 
+}
+//----------------------------------------------------------------------------------------
+//                     ⁡⁣⁢⁣​‌‌‍ 𝔹𝕝𝕚𝕥 𝕀𝕞𝕒𝕘𝕖!!!!​⁡
+
+void Menu::blitImage(const uint16_t image[],int w,int h,int destx,int desty)
+{
+    for(int rows=0;rows<h;rows++)
+        for(int cols=0;cols<w;cols++)
+        {
+            uint16_t pixelindex=rows*w+cols;
+            uint16_t pixelval=image[pixelindex];
+
+            if(pixelval!=0x0F81F)
+                Display.drawPixel(destx+cols,desty+rows,pixelval);
+
+
+
+
+        }
+
+
+}
+//----------------------------------------------------------------------------------------
+
+
+
+//----------------------------------------------------------------------------------------
+
+void Menu::animateNeedle()
+{
+
+    //first blit the old needle away
+    // 4 wide by 25 deep. tuner is 240x87
+    int yoffset=30;  //need to seperate the screen coordinates from the image coordinates
+
+    for(int y=0;y<35;y++)   //blit the old need away
+        for(int x=0;x<6;x++)
+        {
+            int xpos=needleX+x;
+            int ypos=y;
+            uint16_t pixval=radiodial[(ypos+yoffset)*240+xpos];
+
+            Display.drawPixel(xpos,ypos+130,pixval);
+
+        }
+
+
+    needleX+=needleDX;  //march it back and forth
+    if(needleX>200 || needleX<25)
+        needleDX*=-1;
+
+
+    Display.fillRect(needleX,130,3,35,ILI9341_RED);
+    Display.fillRect(needleX+3,130,3,35,Display.color565(61,36,39)); //needle shadow
+    
+
+}

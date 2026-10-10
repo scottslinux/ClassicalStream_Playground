@@ -53,7 +53,7 @@ Stationinfo Tuner::getStationChoices(String genreChoice)
     unsigned long now=millis();
 
    httpclient.begin(
-    "https://de1.api.radio-browser.info/json/stations/search"
+    "http://de1.api.radio-browser.info/json/stations/search"
     "?tag="+test+
     "&countrycode=US"
     "&limit=20"
@@ -103,25 +103,7 @@ httpclient.end();
             
         
       }
-/*
-      for (int i=0;i<stationNum;i++)
-      {
-        Serial.println("*********************************************************");
-        Serial.print("Station Name: ");
-        Serial.println(stationList[i].Name);
-        Serial.println(stationList[i].url_resolved);
-      }
 
-      
-
-      for (int i=0;i<stationNum;i++)
-      {
-        Serial.println("*******************SHUFFLED****************************");
-        Serial.print("Station Name: ");
-        Serial.println(stationList[i].Name);
-        Serial.println(stationList[i].url_resolved);
-      }
-*/
       std::shuffle(stationList.begin(),stationList.end(), rng);
       
       int choice;

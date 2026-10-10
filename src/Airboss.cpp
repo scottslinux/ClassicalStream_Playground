@@ -12,6 +12,9 @@ Airboss::Airboss(Menu& menu1, Tuner& tuner1, Audio& audio1): menu(menu1), tuner(
     lastMenu=millis();
     lastTouch=millis();
     lastdebounce=millis();
+    lastScroll=millis();
+    lastbuttonpress=millis();
+    lasttuner=millis();
 
 
 
@@ -58,15 +61,15 @@ if((millis()-lastMenu) > menuInterval)
 
             Serial.print("Art Item: ");
             Serial.println(pendingChoice);
+            menu.currGenre=pendingChoice;   //register the current genre choice
 
-            menu.drawart(pendingChoice);
 
             tuner.getStationChoices(tuner.genres[pendingChoice]);
             pendingChoice=-999; //reset pending choice
 
             dirtyDisplay=true;  
             
-            radioState=States::Results_Display;
+            radioState=States::Loading_Stations;
             
             
         }
@@ -76,6 +79,39 @@ if((millis()-lastMenu) > menuInterval)
         break;
     }
     //..................................
+    
+    //      ⁡⁣⁢⁣𝗟𝗼𝗮𝗱𝗶𝗻𝗴_𝗦𝘁𝗮𝘁𝗶𝗼𝗻𝘀 (𝗿𝗮𝗱𝗶𝗼 𝘁𝘂𝗻𝗲𝗿 𝗮𝗻𝗶𝗺𝗮𝘁𝗶𝗼𝗻⁡
+
+    case States::Loading_Stations:
+    {
+        if(dirtyDisplay)
+        {
+            menu.clearMenu();
+            menu.drawart(4);    //draw radio tuner on display
+            dirtyDisplay=false;
+            animationstart=millis();
+            dialanimation=true; //start the animation
+            Serial.print("in loading stations..");
+        }
+
+        
+
+        if(millis()-animationstart >animationDuratin)
+        {
+            dialanimation=false;    //end it
+            radioState=States::Results_Display;
+            dirtyDisplay=true;
+
+        }
+
+
+
+
+
+        break;
+    }
+    //..................................
+
     //      ⁡⁣⁢⁣𝗥𝗲𝘀𝘂𝗹𝘁𝘀_𝗗𝗶𝘀𝗽𝗹𝗮𝘆 𝗮𝗳𝘁𝗲𝗿 𝘀𝗲𝗹𝗲𝗰𝘁𝗶𝗻𝗴 𝗚𝗲𝗻𝗿𝗲⁡
     
     case States::Results_Display:
@@ -121,6 +157,7 @@ if((millis()-lastMenu) > menuInterval)
         if(dirtyDisplay)
         {
             menu.clearMenu();
+            menu.resetScroll();
             
             menu.draWAudioControls();
             menu.drawart(menu.currGenre);
@@ -132,6 +169,7 @@ if((millis()-lastMenu) > menuInterval)
             
         }//test-->"https://allclassical.streamguys1.com/ac96k"
 
+        
 
         break;
     }
@@ -167,6 +205,37 @@ if((millis()-lastMenu) > menuInterval)
 
 }
 
+//outside of the menu timing check to see if we need to keep the
+//station title smoothly scrolling
+if(radioState==States::Play_RadioStation && audio.isRunning())
+{
+       if((millis()-lastScroll)>scrollInterval)
+        {
+            menu.drawPlayingStation(selectedStation.Name.c_str());
+            lastScroll=millis();
+        }
+}
+
+
+if(dialanimation)   //is needle animation underway?
+{
+    if(millis()-lasttuner >tunerinterval)   //only on given interval
+    {
+        menu.animateNeedle();
+        lasttuner=millis();
+
+
+    }
+
+
+
+
+
+}
+
+
+
+
 
 //      ⁡⁣⁢⁣𝗧𝗼𝘂𝗰𝗵 𝗽𝗼𝗹𝗹𝗶𝗻𝗴 𝗼𝗻 𝘁𝗼𝘂𝗰𝗵𝗜𝗻𝘁𝗲𝗿𝘃𝗮𝗹⁡
 if((millis()-lastTouch)>touchInterval)
@@ -191,13 +260,21 @@ if((millis()-lastTouch)>touchInterval)
     lastTouch=millis();
 
 
-
+    //   ​‌‍‌⁡⁣⁢⁣𝙏𝙤𝙤𝙡 𝙃𝙖𝙣𝙙𝙡𝙚𝙧⁡​
     if(pendingTool!=-999)   //⁡⁣⁢⁣do the tool functions⁡
     {
+        menu.buttonPressed(pendingTool);  //draw button highlight
+        
+        
+        pressedFlag=true;
+        lastbuttonpress=millis();   //set to now
+
         switch (pendingTool)
         {
         case 0: //play / pause button
             audio.pauseResume();
+            
+            
             break;
 
         case 1:
@@ -230,13 +307,9 @@ if((millis()-lastTouch)>touchInterval)
             break;
         }
         
-        default:
+        default:    
             break;
         }
-
-
-
-
 
 
 
@@ -249,6 +322,16 @@ if((millis()-lastTouch)>touchInterval)
     
 
 }
+//erase button highlight after a delay
+    if(pressedFlag)
+    {
+        if(millis()-lastbuttonpress > buttonPressInterval)
+            {
+                menu.draWAudioControls();
+                pressedFlag=false;
+            }
+
+        }
 
 }  
 

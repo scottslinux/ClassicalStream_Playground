@@ -7,6 +7,7 @@
 #include "Tuner.h"
 #include "digital_712pt7b.h"
 #include <Fonts/FreeMonoBold12pt7b.h>
+#include <Fonts/FreeSerif18pt7b.h>
 
 using namespace std;
 
@@ -28,11 +29,17 @@ class Menu{
     int choices=0;
     int cols=0;
     int currmenucount=0;
+    int needleDX=2;
+    int needleX=150;
+
+    GFXcanvas16 canvas{240,45};
+
     
 
     public:
     ArtImage screenArt;
     int currGenre=0;
+    int scrollX=0;
 
 
 
@@ -51,7 +58,11 @@ class Menu{
         void drawPlayingStation(String playing);
 
         void clearMenu();
-        
+        void resetScroll();
+        void buttonPressed(int button);
+
+        void blitImage(const uint16_t image[],int w,int h,int destx,int desty);
+        void animateNeedle();
 
 
 

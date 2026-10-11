@@ -13,7 +13,7 @@
 #include <buttonPanel_240x55.h>
 #include <highlight45x55.h>
 #include <yellowring35x35.h>    //actually it is a blue ring
-
+#include <bpaused40x40.h>
 
 
 
@@ -232,6 +232,18 @@ void Menu::draWAudioControls()
     */
 
     Display.drawRGBBitmap(0,265,buttonPanel_240x55,240,55);
+    if(pausedFlag)   //if not paused change to paused icon
+            {
+                blitImage(bpaused40x40,40,40,8,274,0x0000); //black is transparent
+                //Display.drawRGBBitmap(10,274,bpaused40x40,40,40);
+                Serial.printf("In audio controls: The value of pausedFlag is %d\n",pausedFlag);
+
+            }
+            else
+            {
+                Display.drawRGBBitmap(0,265,buttonPanel_240x55,240,55);
+            }
+          
 
 }
 //-----------------------------------------------------
@@ -327,8 +339,6 @@ void Menu::drawPlayingStation(String playing)
     
     Display.drawRGBBitmap(0,220,canvas.getBuffer(),240,45);
 
-    Serial.println(playing);
-    Serial.println(w);
 
     
 
@@ -341,23 +351,30 @@ void Menu::resetScroll()
     scrollX=0;
 }
 //----------------------------------------------------------------------------------------
-void Menu::buttonPressed(int button)
+void Menu::buttonPressed(int button, States state)
 
 {
     int buttonspace=46;
     int centerx=10+button*buttonspace;
     int centery=276;
 
+    Serial.printf("You pressed the %d button\nThe value of pausedFlag is %d\n",button,pausedFlag);
     
+    //if play/pause press in the Play_RadioStation state
+    //getstate is a static method in airboss which reveals the cuurent state
+    if(button==0 && (state==States::Play_RadioStation))   
+        {
+            pausedFlag= (pausedFlag) ? 0 : 1;
 
-    blitImage(yellowring35x35,35,35,centerx,centery);
+        }
+    blitImage(yellowring35x35,35,35,centerx,centery, 0xF81F);
 
 
 }
 //----------------------------------------------------------------------------------------
 //                     ⁡⁣⁢⁣​‌‌‍ 𝔹𝕝𝕚𝕥 𝕀𝕞𝕒𝕘𝕖!!!!​⁡
 
-void Menu::blitImage(const uint16_t image[],int w,int h,int destx,int desty)
+void Menu::blitImage(const uint16_t image[],int w,int h,int destx,int desty,uint16_t transparency)
 {
     for(int rows=0;rows<h;rows++)
         for(int cols=0;cols<w;cols++)
@@ -365,7 +382,7 @@ void Menu::blitImage(const uint16_t image[],int w,int h,int destx,int desty)
             uint16_t pixelindex=rows*w+cols;
             uint16_t pixelval=image[pixelindex];
 
-            if(pixelval!=0x0F81F)
+            if(pixelval!=transparency)
                 Display.drawPixel(destx+cols,desty+rows,pixelval);
 
 
@@ -406,7 +423,53 @@ void Menu::animateNeedle()
 
 
     Display.fillRect(needleX,130,3,35,ILI9341_RED);
-    Display.fillRect(needleX+3,130,3,35,Display.color565(61,36,39)); //needle shadow
+    Display.fillRect(needleX+3,130,3,35,Display.color565(118,21,32)); //needle shadow
     
+
+}
+//----------------------------------------------------------
+void Menu::clearVolume()
+{
+    Display.fillRect(5,100,8,100,ILI9341_BLACK);
+}
+//----------------------------------------------------------
+void Menu::drawVolume(int currvol)
+{
+    float maxBar=100.0;
+    float maxvol=21.0;
+    float volpercent=(float)currvol/maxvol;
+    float barheight=volpercent*maxBar;
+    uint16_t GraphGreen=Display.color565(15,82,0);
+
+    Display.fillRect(5,100,8,(maxBar-barheight),ILI9341_WHITE);
+    
+    Display.fillRect(5,100+(maxBar-barheight),8,barheight,GraphGreen);
+
+
+}
+//------------------------------------------------------------
+void Menu::drawMeter(uint32_t VUL, uint32_t VUR)
+{
+    float lVal=map(VUL,0,255,0,200);
+    float rVal=map(VUR,0,255,0,200);
+
+    if(lVal>leftVal)
+        leftVal=lVal;
+            else
+                leftVal=(0.9 * leftVal) + (0.1*lVal);
+
+    if(rVal>rightVal)
+        rightVal=rVal;
+            else
+                rightVal=(0.9 * rightVal) + (0.1*rVal);
+
+
+    Display.fillRect(10,20,leftVal,5,ILI9341_DARKCYAN);
+    Display.fillRect(10,30,rightVal,5,ILI9341_DARKCYAN);
+
+    Display.fillRect(leftVal,20,220-leftVal,5,ILI9341_BLACK);
+    Display.fillRect(rightVal,30,220-rightVal,5,ILI9341_BLACK);
+
+
 
 }

@@ -8,6 +8,7 @@
 #include "digital_712pt7b.h"
 #include <Fonts/FreeMonoBold12pt7b.h>
 #include <Fonts/FreeSerif18pt7b.h>
+#include "States.h"
 
 using namespace std;
 
@@ -29,8 +30,13 @@ class Menu{
     int choices=0;
     int cols=0;
     int currmenucount=0;
-    int needleDX=2;
+    int needleDX=4;
     int needleX=150;
+
+    float leftVal=0.0;
+    float rightVal=0.0;
+
+    
 
     GFXcanvas16 canvas{240,45};
 
@@ -40,7 +46,7 @@ class Menu{
     ArtImage screenArt;
     int currGenre=0;
     int scrollX=0;
-
+    bool pausedFlag=false;
 
 
   
@@ -59,10 +65,14 @@ class Menu{
 
         void clearMenu();
         void resetScroll();
-        void buttonPressed(int button);
+        void buttonPressed(int button, States state);
 
-        void blitImage(const uint16_t image[],int w,int h,int destx,int desty);
+        void blitImage(const uint16_t image[],int w,int h,int destx,int desty,uint16_t trans);
         void animateNeedle();
+        void clearVolume();
+        void drawVolume(int currvol);
+        void drawMeter(uint32_t VUL, uint32_t VUR);
+
 
 
 

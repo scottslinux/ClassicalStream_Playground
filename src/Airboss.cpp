@@ -15,6 +15,9 @@ Airboss::Airboss(Menu& menu1, Tuner& tuner1, Audio& audio1): menu(menu1), tuner(
     lastScroll=millis();
     lastbuttonpress=millis();
     lasttuner=millis();
+    lastvolume=millis();
+    lastMeter=millis();
+    
 
 
 
@@ -30,7 +33,7 @@ Airboss::~Airboss()
 //                              ​‌‌‍⁡⁣⁣⁢𝗦𝗧𝗔𝗧𝗘 𝗠𝗢𝗡𝗜𝗧𝗢𝗥⁡​
 
 
-void Airboss::stateMonitor()
+void Airboss::stateMonitor(uint32_t VUleft,uint32_t VUright)
 {
 
 //  ⁡⁣⁢⁣𝗠𝗲𝗻𝘂 𝗦𝗲𝗿𝘃𝗶𝗰𝗶𝗻𝗴⁡ --only service at set interval (menuInterval)
@@ -44,7 +47,7 @@ if((millis()-lastMenu) > menuInterval)
     switch (radioState) //⁡⁢⁣⁣****this is the money*****/⁡
     {
     //..................................
-    //          ⁡⁣⁢⁣𝗦𝗲𝗹𝗲𝗰𝘁_𝗚𝗲𝗻𝗿𝗲⁡
+    //          ⁡⁣⁢⁣​‌‌‍𝗦𝗲𝗹𝗲𝗰𝘁_𝗚𝗲𝗻𝗿𝗲⁡​
     case States::Select_Genre:
     {
         if(genre_entry || dirtyDisplay) //only draw initial scene first time thru
@@ -80,7 +83,7 @@ if((millis()-lastMenu) > menuInterval)
     }
     //..................................
     
-    //      ⁡⁣⁢⁣𝗟𝗼𝗮𝗱𝗶𝗻𝗴_𝗦𝘁𝗮𝘁𝗶𝗼𝗻𝘀 (𝗿𝗮𝗱𝗶𝗼 𝘁𝘂𝗻𝗲𝗿 𝗮𝗻𝗶𝗺𝗮𝘁𝗶𝗼𝗻⁡
+    //      ⁡⁣⁢⁣​‌‌‍𝗟𝗼𝗮𝗱𝗶𝗻𝗴_𝗦𝘁𝗮𝘁𝗶𝗼𝗻𝘀 (𝗿𝗮𝗱𝗶𝗼 𝘁𝘂𝗻𝗲𝗿 𝗮𝗻𝗶𝗺𝗮𝘁𝗶𝗼𝗻⁡​
 
     case States::Loading_Stations:
     {
@@ -112,7 +115,7 @@ if((millis()-lastMenu) > menuInterval)
     }
     //..................................
 
-    //      ⁡⁣⁢⁣𝗥𝗲𝘀𝘂𝗹𝘁𝘀_𝗗𝗶𝘀𝗽𝗹𝗮𝘆 𝗮𝗳𝘁𝗲𝗿 𝘀𝗲𝗹𝗲𝗰𝘁𝗶𝗻𝗴 𝗚𝗲𝗻𝗿𝗲⁡
+    //      ⁡⁣⁢⁣​‌‌‍𝗥𝗲𝘀𝘂𝗹𝘁𝘀_𝗗𝗶𝘀𝗽𝗹𝗮𝘆​ 𝗮𝗳𝘁𝗲𝗿 𝘀𝗲𝗹𝗲𝗰𝘁𝗶𝗻𝗴 𝗚𝗲𝗻𝗿𝗲⁡
     
     case States::Results_Display:
     {
@@ -128,6 +131,8 @@ if((millis()-lastMenu) > menuInterval)
 
             dirtyDisplay=false;
         }
+        
+        menu.pausedFlag=false; //reset the pause/play to play
 
         //check for a selection from the list
         if(pendingChoice!=-999) //a menu selection was made in touch
@@ -150,7 +155,7 @@ if((millis()-lastMenu) > menuInterval)
         break;
     }
     //---------------------------------------------------------
-    //          ⁡⁣⁢⁣𝗣𝗹𝗮𝘆_𝗥𝗮𝗱𝗶𝗼𝗦𝘁𝗮𝘁𝗶𝗼𝗻 ⁡
+    //          ⁡⁣⁢⁣​‌‌‍𝗣𝗹𝗮𝘆_𝗥𝗮𝗱𝗶𝗼𝗦𝘁𝗮𝘁𝗶𝗼𝗻 ⁡​
     
     case States::Play_RadioStation:
     {
@@ -187,26 +192,19 @@ if((millis()-lastMenu) > menuInterval)
     //..................................
 
     }
+//---------⁡⁣⁢⁣end of case staatement. Past this line executed every frame cycle⁡
 
 
             
             
-    if(menuflag)    //pulse circle effect
-    {
-        menu.pulseCircle(menuflag);
-        menuflag=false;
-    }
-        else
-        {
-            menu.pulseCircle(menuflag);
-            menuflag=true;
-        }
+  
     
 
 }
 
-//outside of the menu timing check to see if we need to keep the
-//station title smoothly scrolling
+//⁡⁢⁢⁢𝗼𝘂𝘁𝘀𝗶𝗱𝗲 𝗼𝗳 𝘁𝗵𝗲 𝗺𝗲𝗻𝘂 𝘁𝗶𝗺𝗶𝗻𝗴 𝗰𝗵𝗲𝗰𝗸  𝗸𝗲𝗲𝗽 𝘁𝗵𝗲⁡
+//⁡⁢⁢⁢𝘀𝘁𝗮𝘁𝗶𝗼𝗻 𝘁𝗶𝘁𝗹𝗲 𝘀𝗺𝗼𝗼𝘁𝗵𝗹𝘆 𝘀𝗰𝗿𝗼𝗹𝗹𝗶𝗻𝗴⁡ ⁡⁢⁢⁢𝗮𝗻𝗱 𝘀𝗲𝗿𝗶𝘃𝗰𝗲 𝗼𝘁𝗵𝗲𝗿 𝗿𝗼𝘂𝘁𝗶𝗻𝗲𝘀⁡
+
 if(radioState==States::Play_RadioStation && audio.isRunning())
 {
        if((millis()-lastScroll)>scrollInterval)
@@ -232,7 +230,35 @@ if(dialanimation)   //is needle animation underway?
 
 
 }
+//  ⁡⁣⁢⁣Volume Indicator Servicing⁡
 
+if(volumeanimation)
+{
+    if(millis()-lastvolume > volumeInterval)
+    {
+        menu.drawVolume(tuner.currvol);
+        lastvolume=millis();
+    }
+
+    //is the animation sequence over?
+    if(millis()-volumestart > volumeDuratin)
+    {
+        Serial.printf("*************ending****");
+        menu.clearVolume();
+        volumeanimation=false;
+    }
+
+
+
+}
+
+//  ⁡⁣⁢⁣VU Meter Servicing⁡
+if(millis()-lastMeter >meterInterval &&VUleft>0 && radioState==States::Play_RadioStation)
+{
+    menu.drawMeter(VUleft,VUright);
+    lastMeter=millis();
+
+}
 
 
 
@@ -263,7 +289,7 @@ if((millis()-lastTouch)>touchInterval)
     //   ​‌‍‌⁡⁣⁢⁣𝙏𝙤𝙤𝙡 𝙃𝙖𝙣𝙙𝙡𝙚𝙧⁡​
     if(pendingTool!=-999)   //⁡⁣⁢⁣do the tool functions⁡
     {
-        menu.buttonPressed(pendingTool);  //draw button highlight
+        menu.buttonPressed(pendingTool, radioState);  //draw button highlight
         
         
         pressedFlag=true;
@@ -280,11 +306,15 @@ if((millis()-lastTouch)>touchInterval)
         case 1:
             tuner.volumeDown();
             audio.setVolume(tuner.currvol);
+            volumeanimation=true;
+            volumestart=millis();
             break;
         
         case 2:
             tuner.volumeUp();
             audio.setVolume(tuner.currvol);
+            volumeanimation=true;
+            volumestart=millis();
             break;
 
         case 4: //back button
@@ -334,4 +364,4 @@ if((millis()-lastTouch)>touchInterval)
         }
 
 }  
-
+//-----------------------------------------------------------

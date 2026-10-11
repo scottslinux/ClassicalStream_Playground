@@ -4,9 +4,9 @@
 #include "Menu.h"
 #include "Tuner.h"
 #include "Audio.h"
+#include "States.h"
 
 
-enum class States{Initialize,Select_Genre,Loading_Stations,Results_Display,Play_RadioStation};
 
 class Airboss{
 
@@ -22,7 +22,7 @@ class Airboss{
     States radioState;
 
     unsigned long lastMenu,lastTouch,lastdebounce,lastScroll,lastbuttonpress,
-                    lasttuner;
+                    lasttuner,lastvolume,lastMeter;
     //service the menu 2xper second (500ms)
     //service the touch more frequently
     const unsigned long menuInterval=500;
@@ -32,7 +32,12 @@ class Airboss{
     const unsigned long buttonPressInterval=200;
     const unsigned long tunerinterval=50;
     const unsigned long animationDuratin=5000;
+    const unsigned long volumeDuratin=2000;
+    const unsigned long volumeInterval=50;
+    const unsigned long meterInterval=50;
+
     unsigned long animationstart;
+    unsigned long volumestart;
 
 
 
@@ -48,6 +53,9 @@ class Airboss{
     bool touchflag=false;
     bool pressedFlag=false;
     bool dialanimation=false;
+    bool volumeanimation=false;
+
+    
 
 
 
@@ -58,7 +66,8 @@ class Airboss{
 
         Airboss(Menu&, Tuner&, Audio&);
         ~Airboss();
-        void stateMonitor();
+        void stateMonitor(uint32_t VUleft,uint32_t VUright);
+        static States getstate();
         
 
 

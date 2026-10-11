@@ -18,7 +18,11 @@ Tuner::Tuner()
     "rock",
     "pop",
     "classical",
-    "jazz"   
+    "jazz",
+    "smooth jazz",
+    "oldies",
+    "news",
+    "talk"   
     };
 
     

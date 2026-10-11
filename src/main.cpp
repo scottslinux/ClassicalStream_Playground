@@ -28,6 +28,9 @@
 uint8_t max_volume   = 21;
 uint8_t cur_volume =15;
 
+uint32_t vuLeft = 0;    //VU Meter values
+uint32_t vuRight = 0;
+
 Adafruit_ILI9341 tft(CS,DC,Reset);
 XPT2046_Touchscreen ts(touch_CS);
 
@@ -76,8 +79,18 @@ void connectWiFi()  //connect to wifi.
 
 
 }
+//--------------------------------------------------------------
 
+void my_audio_info(Audio::msg_t m) {
+    if (m.e == Audio::evt_vu && m.vec1.size() >= 2) {
+        vuLeft  = m.vec1[0];
+        vuRight = m.vec1[1];
 
+        Serial.printf("VU L:%lu R:%lu\n",
+                      (unsigned long)vuLeft,
+                      (unsigned long)vuRight);
+    }
+}
 //------------------------------------------------------------------------------
 void setup() {
 
@@ -112,8 +125,13 @@ void setup() {
 
     cur_volume=max_volume* 0.65;
 
+    //register the meter call back function
+    Audio::audio_info_callback = my_audio_info;
+
+
     audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
     audio.setVolume(cur_volume); // 0...21
+    audio.settings.VU_LEVEL = true; //set up the meter
 
     Serial.println("---------------");
     Serial.println((newStation.Name).c_str());
@@ -152,7 +170,7 @@ void loop()
 
     audio.loop();    // must hit this every time
 
-    airboss.stateMonitor(); // manage program floaw
+    airboss.stateMonitor(vuLeft,vuRight); // manage program floaw
     
 
 }

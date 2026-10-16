@@ -54,7 +54,8 @@ class Menu{
         Menu(Adafruit_ILI9341& tftdisplay, XPT2046_Touchscreen& touchSense); //pass an instance of the TFT for drawing
         ~Menu();
         void drawMenu(const vector<String>&); //pass by immutable reference string vector
-        void drawMenu(const vector<Stationinfo>&); //overloaded..pass stationinfo structure
+        void drawMenu(const vector<Stationinfo>&, const vector<bool>& starred); //overloaded..pass stationinfo structure
+                                                                            //starred[i] true = draw a favorite star
         int select_from_Menu();
         void pulseCircle(bool flag);
         void draWAudioControls();
@@ -72,6 +73,11 @@ class Menu{
         void clearVolume();
         void drawVolume(int currvol);
         void drawMeter(uint32_t VUL, uint32_t VUR);
+
+        void drawStar(int centerX, int centerY, int radius, uint16_t color);
+        void drawFavoriteMark(bool isFavorite);    //star in the corner of the play screen
+        void drawEmptyFavorites();
+        void drawServerError();
 
 
 

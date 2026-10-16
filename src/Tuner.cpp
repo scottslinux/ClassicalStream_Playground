@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
+#include <WiFi.h>
 #include <ArduinoJson.h>
 #include "Tuner.h"
 #include <esp_random.h>
@@ -42,28 +43,38 @@ Tuner::~Tuner()
 
 
 //******************************************************* */
-Stationinfo Tuner::getStationChoices(String genreChoice)
+//  returns true if a station list was loaded, false if the radio-browser
+//  server could not be reached (or sent back something unusable)
+bool Tuner::getStationChoices(String genreChoice)
 {
     String payload;
     JsonDocument doc;
-    
 
-    
+
+
     HTTPClient httpclient;
 
     static std::mt19937 rng(esp_random());   // random number generator, seeded once
+
+    //no wifi..don't even try
+    if(WiFi.status()!=WL_CONNECTED)
+    {
+        Serial.println("No WiFi..cannot reach radio-browser");
+        return false;
+    }
 
     String test=genreChoice;
     unsigned long now=millis();
 
    httpclient.begin(
-    "http://de1.api.radio-browser.info/json/stations/search"
+    "http://de2.api.radio-browser.info/json/stations/search"
     "?tag="+test+
     "&countrycode=US"
     "&limit=20"
     "&hidebroken=true"
 );
-    httpclient.setTimeout(5000);
+    httpclient.setConnectTimeout(4000);    //give up connecting after 4 seconds
+    httpclient.setTimeout(5000);           //give up waiting for data after 5 seconds
 
     httpclient.addHeader("User-Agent", "ScottESP32Radio/1.0");  //RadioBrowser requests adding descriptive USER-AGENT
 
@@ -71,26 +82,33 @@ Stationinfo Tuner::getStationChoices(String genreChoice)
 
     int httpCode = httpclient.GET();
 
-    if (httpCode > 0) 
+    //negative code = could not connect at all, other codes = server trouble
+    if (httpCode != HTTP_CODE_OK)
     {
-        payload = httpclient.getString();
-        Serial.print("HTTP Code: ");
-        Serial.println(httpCode);
-        Serial.println(millis()-now);
-
-        
+        Serial.print("Radio-browser request failed. Code: ");
+        Serial.print(httpCode);
+        Serial.print(" ");
+        Serial.println(httpclient.errorToString(httpCode));
+        httpclient.end();
+        return false;
     }
+
+    payload = httpclient.getString();
+    Serial.print("HTTP Code: ");
+    Serial.println(httpCode);
+    Serial.println(millis()-now);
 
 httpclient.end();
 
 
-   
+
     DeserializationError jsonError = deserializeJson(doc, payload);
 
     if(jsonError)
       {
         Serial.print("JSON parse failed: ");
         Serial.println(jsonError.c_str());
+        return false;
       }
       else  //it worked!  Parse it
       {
@@ -100,6 +118,7 @@ httpclient.end();
 
                 stationList[i].Name = doc[i]["name"].as<String>();
                 stationList[i].url_resolved= doc[i]["url_resolved"].as<String>();
+                stationList[i].stationuuid=doc[i]["stationuuid"].as<String>();
                 if(stationList[i].Name==NULL) break;
                 
             }
@@ -109,23 +128,8 @@ httpclient.end();
       }
 
       std::shuffle(stationList.begin(),stationList.end(), rng);
-      
-      int choice;
-      do{
-          choice=esp_random()%stationNum; //choose a site until a valid one comes up
-          
 
-        }while (stationList[choice].Name ==NULL); 
-
-        Serial.print("Connecting to ");
-        Serial.println(stationList[choice].url_resolved);
-        Serial.println(choice);
-
-        Stationinfo currstation=stationList[choice];
-
-        
-
-return(currstation);
+return true;
 }
 //******************************************************* */
 void Tuner::volumeUp()

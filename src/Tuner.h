@@ -8,6 +8,7 @@
 struct Stationinfo{
             String Name;
             String url_resolved;
+            String stationuuid;
       
         };
 
@@ -33,7 +34,7 @@ class Tuner
         Tuner();
         ~Tuner();
 
-        Stationinfo getStationChoices(String genreChoice);
+        bool getStationChoices(String genreChoice);    //false = server unreachable
         void volumeUp();
         void volumeDown();
         

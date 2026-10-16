@@ -11,6 +11,7 @@
 #include "Tuner.h"
 #include "Menu.h"
 #include "Airboss.h"
+#include "Timer.h"
 
 
 
@@ -35,10 +36,12 @@ Adafruit_ILI9341 tft(CS,DC,Reset);
 XPT2046_Touchscreen ts(touch_CS);
 
 // instantiate the objects
+Timer timer;    //master timer...will pass to airboss
 Audio audio;
 Tuner tuner;
 Menu menu(tft, ts); //send a handle to the tft & touch context to menu
-Airboss airboss(menu,tuner,audio); //airboss needs control of assets everything but display
+Airboss airboss(menu,tuner,audio,timer); //airboss needs control of assets 
+                                        //everything but display
 
 double lastmenu=millis();   //start the clock
 float menuInterval=500.0;
@@ -85,10 +88,6 @@ void my_audio_info(Audio::msg_t m) {
     if (m.e == Audio::evt_vu && m.vec1.size() >= 2) {
         vuLeft  = m.vec1[0];
         vuRight = m.vec1[1];
-
-        Serial.printf("VU L:%lu R:%lu\n",
-                      (unsigned long)vuLeft,
-                      (unsigned long)vuRight);
     }
 }
 //------------------------------------------------------------------------------
@@ -96,6 +95,8 @@ void setup() {
 
     Serial.begin(115200);
     delay(1000);
+
+    airboss.begin();
 
     tft.begin();
     tft.fillScreen(ILI9341_BLACK);
@@ -170,7 +171,7 @@ void loop()
 
     audio.loop();    // must hit this every time
 
-    airboss.stateMonitor(vuLeft,vuRight); // manage program floaw
-    
+    airboss.stateMonitor(vuLeft,vuRight); // manage program flow
+    timer.timekeeper();                   // update the timers every frame
 
 }

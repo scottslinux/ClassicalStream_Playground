@@ -2,11 +2,13 @@
 #include "Airboss.h"
 #include "Menu.h"
 #include "Tuner.h"
+#include "Favorites.h"
 
 
 //----------------------------------------------------------
 //          Constructor
-Airboss::Airboss(Menu& menu1, Tuner& tuner1, Audio& audio1): menu(menu1), tuner(tuner1), audio(audio1)
+Airboss::Airboss(Menu& menu1, Tuner& tuner1, Audio& audio1,
+                 Timer& mainsTimer): menu(menu1), tuner(tuner1), audio(audio1), timer(mainsTimer)
 {
     radioState=States::Select_Genre;  //let's get started
     lastMenu=millis();
@@ -18,8 +20,10 @@ Airboss::Airboss(Menu& menu1, Tuner& tuner1, Audio& audio1): menu(menu1), tuner(
     lastvolume=millis();
     lastMeter=millis();
     
+    //start initializing the timers save the int timer index 
+    meterindex=timer.addtimer(meterInterval,true,[this](){VUmanager();}); //VU Meter
 
-
+    
 
 
 }
@@ -35,6 +39,10 @@ Airboss::~Airboss()
 
 void Airboss::stateMonitor(uint32_t VUleft,uint32_t VUright)
 {
+
+//save the values for VU in the class level variables
+    VUL=VUleft;
+    VUR=VUright;
 
 //  ⁡⁣⁢⁣𝗠𝗲𝗻𝘂 𝗦𝗲𝗿𝘃𝗶𝗰𝗶𝗻𝗴⁡ --only service at set interval (menuInterval)
     
@@ -52,12 +60,20 @@ if((millis()-lastMenu) > menuInterval)
     {
         if(genre_entry || dirtyDisplay) //only draw initial scene first time thru
         {   menu.drawFrame();
-            menu.drawMenu(tuner.genres);
+            menu.drawMenu(genreMenu);
             genre_entry=false;
             dirtyDisplay=false;
         }
 
-        
+        //the last line of the genre menu is "favorites"..go to that screen
+        if(pendingChoice==favoritesMenuIndex)
+        {
+            pendingChoice=-999;
+            dirtyDisplay=true;
+            radioState=States::Favorites_Display;
+            break;
+        }
+
         if(pendingChoice!=-999) //a menu selection was made in touch
         {
             menu.clearMenu();
@@ -67,13 +83,16 @@ if((millis()-lastMenu) > menuInterval)
             menu.currGenre=pendingChoice;   //register the current genre choice
 
 
-            tuner.getStationChoices(tuner.genres[pendingChoice]);
+            bool gotStations=tuner.getStationChoices(tuner.genres[pendingChoice]);
             pendingChoice=-999; //reset pending choice
 
-            dirtyDisplay=true;  
-            
-            radioState=States::Loading_Stations;
-            
+            dirtyDisplay=true;
+
+            if(gotStations)
+                radioState=States::Loading_Stations;
+            else
+                radioState=States::Server_Error;    //show message then go to favorites
+
             
         }
 
@@ -97,7 +116,8 @@ if((millis()-lastMenu) > menuInterval)
             Serial.print("in loading stations..");
         }
 
-        
+        pendingChoice=-999;     //no menu on this screen..throw away stray taps
+
 
         if(millis()-animationstart >animationDuratin)
         {
@@ -126,12 +146,18 @@ if((millis()-lastMenu) > menuInterval)
 
             menu.drawFrame();
             menu.drawart(ArtImage::blank);
-            menu.drawMenu(tuner.stationList);
+            menu.drawMenu(tuner.stationList,buildStarFlags(tuner.stationList));
             menu.draWAudioControls();
 
             dirtyDisplay=false;
         }
+
+
+
+
         
+
+
         menu.pausedFlag=false; //reset the pause/play to play
 
         //check for a selection from the list
@@ -144,13 +170,76 @@ if((millis()-lastMenu) > menuInterval)
 
             Serial.println(selectedStation.Name);
 
-            dirtyDisplay=true;  
+            dirtyDisplay=true;
             radioState=States::Play_RadioStation;
+            returnState=States::Results_Display;    //back button returns here
             pendingChoice=-999; //reset pending choice
-            
-            
+
+
         }
 
+
+        break;
+    }
+    //---------------------------------------------------------
+    //          ⁡⁣⁢⁣​‌‌‍𝗦𝗲𝗿𝘃𝗲𝗿_𝗘𝗿𝗿𝗼𝗿⁡​ radio-browser could not be reached
+    //          show a message, then fall back to the favorites list
+
+    case States::Server_Error:
+    {
+        if(dirtyDisplay)
+        {
+            menu.clearMenu();
+            menu.drawServerError();
+            errorstart=millis();
+            dirtyDisplay=false;
+        }
+
+        pendingChoice=-999;     //no menu on this screen..throw away stray taps
+
+        if(millis()-errorstart > errorDuration)
+        {
+            radioState=States::Favorites_Display;
+            dirtyDisplay=true;
+        }
+
+        break;
+    }
+    //---------------------------------------------------------
+    //          ⁡⁣⁢⁣​‌‌‍𝗙𝗮𝘃𝗼𝗿𝗶𝘁𝗲𝘀_𝗗𝗶𝘀𝗽𝗹𝗮𝘆⁡​ list of saved stations
+
+    case States::Favorites_Display:
+    {
+        const std::vector<Stationinfo>& favList=favorites.getFavorites();
+
+        if(dirtyDisplay)
+        {
+            menu.drawFrame();
+            menu.drawMenu(favList,buildStarFlags(favList));  //every line gets a star
+            if(favList.size()==0)
+                menu.drawEmptyFavorites();
+            menu.draWAudioControls();
+
+            dirtyDisplay=false;
+        }
+
+        menu.pausedFlag=false; //reset the pause/play to play
+
+        //check for a selection from the list
+        if(pendingChoice!=-999)
+        {
+            if(pendingChoice<(int)favList.size())   //only real lines
+            {
+                selectedStation=favList[pendingChoice];
+
+                Serial.println(selectedStation.Name);
+
+                dirtyDisplay=true;
+                radioState=States::Play_RadioStation;
+                returnState=States::Favorites_Display;  //back button returns here
+            }
+            pendingChoice=-999; //reset pending choice
+        }
 
         break;
     }
@@ -167,14 +256,16 @@ if((millis()-lastMenu) > menuInterval)
             menu.draWAudioControls();
             menu.drawart(menu.currGenre);
             menu.drawPlayingStation(selectedStation.Name.c_str());
-            
+            menu.drawFavoriteMark(favorites.isFavorite(selectedStation));
+
 
             audio.connecttohost(selectedStation.url_resolved.c_str());
             dirtyDisplay=false;
             
         }//test-->"https://allclassical.streamguys1.com/ac96k"
 
-        
+        pendingChoice=-999;     //no menu on this screen..throw away stray taps
+
 
         break;
     }
@@ -193,12 +284,8 @@ if((millis()-lastMenu) > menuInterval)
 
     }
 //---------⁡⁣⁢⁣end of case staatement. Past this line executed every frame cycle⁡
+//---------​‌‌‍⁡⁢⁢⁣𝗘𝗡𝗗 𝗢𝗙 𝗧𝗜𝗠𝗘𝗥 𝗚𝗔𝗧𝗘𝗗 𝗖𝗢𝗡𝗧𝗥𝗢𝗟⁡​
 
-
-            
-            
-  
-    
 
 }
 
@@ -251,7 +338,7 @@ if(volumeanimation)
 
 
 }
-
+/*
 //  ⁡⁣⁢⁣VU Meter Servicing⁡
 if(millis()-lastMeter >meterInterval &&VUleft>0 && radioState==States::Play_RadioStation)
 {
@@ -259,7 +346,7 @@ if(millis()-lastMeter >meterInterval &&VUleft>0 && radioState==States::Play_Radi
     lastMeter=millis();
 
 }
-
+*/
 
 
 
@@ -317,12 +404,35 @@ if((millis()-lastTouch)>touchInterval)
             volumestart=millis();
             break;
 
+        case 3: //heart button
+        {
+            if(radioState==States::Play_RadioStation)
+            {
+                //toggle: favorite -> remove it, not a favorite -> add it
+                if(favorites.isFavorite(selectedStation))
+                    favorites.deleteFavorites(selectedStation);
+                else
+                    favorites.addFavorites(selectedStation);
+
+                menu.drawFavoriteMark(favorites.isFavorite(selectedStation));
+            }
+            else
+                if(radioState==States::Select_Genre || radioState==States::Results_Display)
+                {
+                    //from a menu screen the heart is a shortcut to the favorites list
+                    radioState=States::Favorites_Display;
+                    dirtyDisplay=true;
+                }
+
+            break;
+        }
+
         case 4: //back button
         {
-            
+
             if(radioState==States::Play_RadioStation)
                 {
-                    radioState=States::Results_Display;
+                    radioState=returnState;     //results list or favorites list
                     audio.stopSong();
                     dirtyDisplay=true;
                 }
@@ -365,3 +475,38 @@ if((millis()-lastTouch)>touchInterval)
 
 }  
 //-----------------------------------------------------------
+void Airboss::VUmanager()
+{
+    //  ⁡⁣⁢⁣VU Meter Servicing⁡
+if(VUL>0 && radioState==States::Play_RadioStation)
+{
+    menu.drawMeter(VUL,VUR);
+    
+}
+}
+//----------------------------------------------------------
+void Airboss::begin()
+{
+    favorites.initializeFilesystem();
+    favorites.loadFavorites();
+
+    //genre menu = all the tuner genres with "favorites" added as the last line
+    genreMenu=tuner.genres;
+    genreMenu.push_back("favorites");
+    favoritesMenuIndex=genreMenu.size()-1;
+
+}
+//----------------------------------------------------------
+//  true/false for each station: is it saved as a favorite?
+//  Menu uses this to decide where to draw stars
+std::vector<bool> Airboss::buildStarFlags(const std::vector<Stationinfo>& stations)
+{
+    std::vector<bool> flags;
+
+    for(size_t i=0; i<stations.size(); i++)
+    {
+        flags.push_back(favorites.isFavorite(stations[i]));
+    }
+
+    return flags;
+}

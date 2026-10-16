@@ -4,6 +4,8 @@
 #include <Adafruit_ILI9341.h>
 #include <Fonts/FreeSansBold18pt7b.h>
 #include "Tuner.h"
+
+
 #include <violin200x150.h>
 #include <saxophone_135x180.h>
 #include <guitar_135x180.h>
@@ -87,7 +89,7 @@ void Menu::drawMenu(const vector<String>& items)
 //----------------------------------------------------------------
 //      ⁡⁣𝗢𝘃𝗲𝗿𝗹𝗼𝗮𝗱𝗲𝗱 𝗱𝗿𝗮𝘄𝗠𝗲𝗻𝘂 𝗠𝗲𝘁𝗵𝗼𝗱 𝘁𝗼 𝗔𝗰𝗰𝗲𝗽𝘁 𝗦𝘁𝗮𝘁𝗶𝗼𝗻𝗶𝗻𝗳𝗼 𝗦𝘁𝗿𝘂𝗰𝘁⁡
 
-void Menu::drawMenu(const vector<Stationinfo>& items)
+void Menu::drawMenu(const vector<Stationinfo>& items, const vector<bool>& starred)
 {
     choices=items.size();  //define table size
     choices=constrain(choices,0,10);    //limit it to 10 lines- may scroll later
@@ -95,6 +97,7 @@ void Menu::drawMenu(const vector<Stationinfo>& items)
     currmenucount=choices;
 
     uint16_t Violet=Display.color565(122,111,220);
+    uint16_t Gold=Display.color565(255,200,0);
 
 
     uint16_t w,h;
@@ -106,32 +109,41 @@ void Menu::drawMenu(const vector<Stationinfo>& items)
     String spacingstring="MAX STATION SIZE 123";
     Display.getTextBounds(spacingstring,0,0,&xpos,&ypos,&w,&h);
     cellheight=h*1.5;   //⁡⁣⁣⁢𝗮𝗱𝗱 𝗽𝗮𝗱𝗱𝗶𝗻𝗴 𝘁𝗼 𝘁𝗵𝗲 𝗵𝗲𝗶𝗴𝗵𝘁 𝗼𝗳 𝘁𝗵𝗲 𝗰𝗲𝗹𝗹⁡
-    int maxpixels=w;
+
+    //reserve a column on the left of every line for the favorite star
+    //text is centered in what is left over
+    const int starColumn=14;
+    const int maxStarChars=17;          //2 less than maxchars to make room for the star
+    int textLeft=menuoffX+starColumn;
+    int textWidth=menuWidth-starColumn;
 
     //draw a grid and menu items
     for(int index=0;index<choices;index++)
     {
         //Display.drawRect(menuoffX,menuoffY+index*cellheight,menuWidth,cellheight,ILI9341_GREEN);
-        Display.getTextBounds(items[index].Name,0,0,&xpos,&ypos,&w,&h);
+
+        String name=items[index].Name;
+        if(name.length()>maxStarChars)
+            name=name.substring(0,maxStarChars);    //truncate long names
+
+        Display.getTextBounds(name,0,0,&xpos,&ypos,&w,&h);
 
         //index+1 prints the text on the lower border. Y pos indicates the floor
-        
-        
+        int baseline=cellheight*(index+1)+menuoffY-3;
 
-        if(items[index].Name.length()<maxchars)
-        {
-            Display.setCursor(menuWidth/2-w/2+menuoffX,cellheight*(index+1)+menuoffY-3);
-            Display.print(items[index].Name.c_str());
-        }
-                else{
-                        Display.setCursor(menuWidth/2-maxpixels/2+menuoffX,cellheight*(index+1)+menuoffY-3);
-                        Display.print(items[index].Name.substring(0,maxchars).c_str());
-                }
+        int textX=textLeft+(textWidth-w)/2;
+        if(textX<textLeft)
+            textX=textLeft;
 
-        
-        
+        Display.setCursor(textX,baseline);
+        Display.print(name.c_str());
+
+        //star goes in the left column, centered on the text height
+        if(index<(int)starred.size() && starred[index])
+            drawStar(menuoffX+5,baseline-7,6,Gold);
+
     }
-    
+
 
 }
 
@@ -372,14 +384,14 @@ void Menu::buttonPressed(int button, States state)
 
 }
 //----------------------------------------------------------------------------------------
-//                     ⁡⁣⁢⁣​‌‌‍ 𝔹𝕝𝕚𝕥 𝕀𝕞𝕒𝕘𝕖!!!!​⁡
+//                     ⁡⁣⁢⁣​‌‌‍ ​‌‌‌‍𝔹𝕝𝕚𝕥 𝕀𝕞𝕒𝕘𝕖!!!!⁡​
 
 void Menu::blitImage(const uint16_t image[],int w,int h,int destx,int desty,uint16_t transparency)
 {
     for(int rows=0;rows<h;rows++)
         for(int cols=0;cols<w;cols++)
         {
-            uint16_t pixelindex=rows*w+cols;
+            int pixelindex=rows*w+cols;
             uint16_t pixelval=image[pixelindex];
 
             if(pixelval!=transparency)
@@ -453,6 +465,7 @@ void Menu::drawMeter(uint32_t VUL, uint32_t VUR)
     float lVal=map(VUL,0,255,0,200);
     float rVal=map(VUR,0,255,0,200);
 
+    
     if(lVal>leftVal)
         leftVal=lVal;
             else
@@ -472,4 +485,101 @@ void Menu::drawMeter(uint32_t VUL, uint32_t VUR)
 
 
 
+}
+//------------------------------------------------------------
+//  ⁡⁣⁢⁣5 𝗽𝗼𝗶𝗻𝘁𝗲𝗱 𝘀𝘁𝗮𝗿⁡
+//  walk around a circle in 36 degree steps, alternating between
+//  the outer radius (a tip) and the inner radius (a notch). Then fill
+//  a thin triangle from the center to each pair of neighboring points.
+void Menu::drawStar(int centerX, int centerY, int radius, uint16_t color)
+{
+    float innerRadius=radius*0.45;
+    int pointX[10];
+    int pointY[10];
+
+    for(int i=0;i<10;i++)
+    {
+        float angle=(-90.0+i*36.0)*DEG_TO_RAD;  //start straight up
+        float r;
+        if(i%2==0)
+            r=radius;           //even points are tips
+        else
+            r=innerRadius;      //odd points are notches
+
+        pointX[i]=centerX+r*cos(angle);
+        pointY[i]=centerY+r*sin(angle);
+    }
+
+    for(int i=0;i<10;i++)
+    {
+        int next=(i+1)%10;      //wrap the last point back to the first
+        Display.fillTriangle(centerX,centerY,pointX[i],pointY[i],
+                             pointX[next],pointY[next],color);
+    }
+}
+//------------------------------------------------------------
+//  gold star in the top right of the play screen when the station is a favorite
+void Menu::drawFavoriteMark(bool isFavorite)
+{
+    int centerX=226;
+    int centerY=10;
+    int radius=8;
+    uint16_t Gold=Display.color565(255,200,0);
+
+    //erase whatever was there first
+    Display.fillRect(centerX-radius-1,centerY-radius-1,radius*2+3,radius*2+3,ILI9341_BLACK);
+
+    if(isFavorite)
+        drawStar(centerX,centerY,radius,Gold);
+}
+//------------------------------------------------------------
+//  message for the favorites screen when nothing has been saved yet
+void Menu::drawEmptyFavorites()
+{
+    uint16_t w,h;
+    int16_t xpos,ypos;
+    uint16_t Violet=Display.color565(122,111,220);
+
+    String lines[4]={"no favorites yet","","play a station and","tap the heart"};
+
+    Display.setFont(&digital_712pt7b);
+    Display.setTextColor(Violet);
+
+    for(int i=0;i<4;i++)
+    {
+        Display.getTextBounds(lines[i],0,0,&xpos,&ypos,&w,&h);
+        Display.setCursor(120-w/2,110+i*25);
+        Display.print(lines[i].c_str());
+    }
+
+    drawStar(120,70,14,Display.color565(255,200,0));
+}
+//------------------------------------------------------------
+//  radio-browser could not be reached. warning triangle + message
+void Menu::drawServerError()
+{
+    uint16_t w,h;
+    int16_t xpos,ypos;
+    uint16_t Gold=Display.color565(255,200,0);
+    uint16_t Violet=Display.color565(122,111,220);
+
+    //warning triangle: gold triangle with a smaller black one inside
+    Display.fillTriangle(120,30, 80,100, 160,100, Gold);
+    Display.fillTriangle(120,42, 89,94, 151,94, ILI9341_BLACK);
+
+    //exclamation mark
+    Display.fillRect(117,55,6,24,Gold);
+    Display.fillCircle(120,86,3,Gold);
+
+    String lines[5]={"station server","unreachable","","going to","favorites..."};
+
+    Display.setFont(&digital_712pt7b);
+    Display.setTextColor(Violet);
+
+    for(int i=0;i<5;i++)
+    {
+        Display.getTextBounds(lines[i],0,0,&xpos,&ypos,&w,&h);
+        Display.setCursor(120-w/2,140+i*25);
+        Display.print(lines[i].c_str());
+    }
 }

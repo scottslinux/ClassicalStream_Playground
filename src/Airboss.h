@@ -5,6 +5,8 @@
 #include "Tuner.h"
 #include "Audio.h"
 #include "States.h"
+#include "Timer.h"
+#include "Favorites.h"
 
 
 
@@ -17,9 +19,11 @@ class Airboss{
     Menu& menu;
     Tuner& tuner;
     Audio& audio;
-    
+    Timer& timer;
 
     States radioState;
+    Favorites favorites;
+    
 
     unsigned long lastMenu,lastTouch,lastdebounce,lastScroll,lastbuttonpress,
                     lasttuner,lastvolume,lastMeter;
@@ -35,17 +39,27 @@ class Airboss{
     const unsigned long volumeDuratin=2000;
     const unsigned long volumeInterval=50;
     const unsigned long meterInterval=50;
+    const unsigned long errorDuration=4000;    //how long the server error shows
+
+    int meterindex=0;
 
     unsigned long animationstart;
     unsigned long volumestart;
+    unsigned long errorstart;
 
 
 
     int pendingChoice=-999;  //a non-choice flag
     int pendingTool=-999;    //tool presses
     int needleDX=3;
+    uint32_t VUL=0;
+    uint32_t VUR=0;
 
     Stationinfo selectedStation;
+
+    std::vector<String> genreMenu;      //tuner genres + "favorites" at the end
+    int favoritesMenuIndex=0;           //which line of genreMenu is "favorites"
+    States returnState=States::Results_Display;   //where back goes from Play_RadioStation
 
     bool dirtyDisplay=true;
     bool menuflag=false;
@@ -54,8 +68,10 @@ class Airboss{
     bool pressedFlag=false;
     bool dialanimation=false;
     bool volumeanimation=false;
+    bool createFavorites=false;
 
-    
+    std::vector<bool> buildStarFlags(const std::vector<Stationinfo>& stations);
+
 
 
 
@@ -64,10 +80,12 @@ class Airboss{
 
     public:
 
-        Airboss(Menu&, Tuner&, Audio&);
+        Airboss(Menu&, Tuner&, Audio&, Timer& mainsTimer);
         ~Airboss();
         void stateMonitor(uint32_t VUleft,uint32_t VUright);
         static States getstate();
+        void VUmanager();
+        void begin();
         
 
 

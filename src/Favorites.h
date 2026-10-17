@@ -29,8 +29,8 @@ public:
     bool addFavorites(const Stationinfo& station);     //false if full or already there
     void deleteFavorites(const Stationinfo& station);
     bool isFavorite(const Stationinfo& station);
+    void updateGenre(const Stationinfo& station);    //save a new genre for a saved station
     const std::vector<Stationinfo>& getFavorites();  //read only handle to the list
-    void dumpFilesystem();
 };
 
 

@@ -64,6 +64,7 @@ bool Tuner::getStationChoices(String genreChoice)
     }
 
     String test=genreChoice;
+    test.replace(" ","%20");    //spaces are not allowed in a URL ("smooth jazz" -> "smooth%20jazz")
     unsigned long now=millis();
 
    httpclient.begin(
@@ -130,6 +131,61 @@ httpclient.end();
       std::shuffle(stationList.begin(),stationList.end(), rng);
 
 return true;
+}
+//******************************************************* */
+//  ask radio-browser for one station's tags and match them to our genres.
+//  tags come back like "monterey,smooth jazz"
+//  returns the genre index, or -1 if it can't tell (or can't reach the server)
+int Tuner::lookupGenre(String uuid)
+{
+    if(uuid.length()==0 || WiFi.status()!=WL_CONNECTED)
+        return -1;
+
+    HTTPClient httpclient;
+    JsonDocument doc;
+
+    httpclient.begin("http://de2.api.radio-browser.info/json/stations/byuuid/"+uuid);
+    httpclient.setConnectTimeout(4000);
+    httpclient.setTimeout(5000);
+    httpclient.addHeader("User-Agent", "ScottESP32Radio/1.0");
+
+    int httpCode=httpclient.GET();
+    if(httpCode!=HTTP_CODE_OK)
+    {
+        Serial.print("Genre lookup failed. Code: ");
+        Serial.println(httpCode);
+        httpclient.end();
+        return -1;
+    }
+
+    String payload=httpclient.getString();
+    httpclient.end();
+
+    if(deserializeJson(doc,payload))   //true means there was an error
+        return -1;
+
+    String tags=doc[0]["tags"].as<String>();
+    tags.toLowerCase();
+    tags.replace(", ",",");             //"jazz, smooth jazz" -> "jazz,smooth jazz"
+    tags=","+tags+",";                  //commas on both ends so every tag is ",tag,"
+
+    Serial.print("Station tags: ");
+    Serial.println(tags);
+
+    //the longest matching genre wins, so "smooth jazz" beats "jazz"
+    int best=-1;
+    int bestLength=0;
+    for(size_t i=0; i<genres.size(); i++)
+    {
+        String wanted=","+genres[i]+",";
+        if(tags.indexOf(wanted)>=0 && (int)genres[i].length()>bestLength)
+        {
+            best=i;
+            bestLength=genres[i].length();
+        }
+    }
+
+    return best;
 }
 //******************************************************* */
 void Tuner::volumeUp()

@@ -6,13 +6,10 @@
 #include <XPT2046_Touchscreen.h>
 #include "Tuner.h"
 #include "digital_712pt7b.h"
-#include <Fonts/FreeMonoBold12pt7b.h>
-#include <Fonts/FreeSerif18pt7b.h>
 #include "States.h"
 
 using namespace std;
 
-enum class ArtImage{microphone, violin, guitar, saxophone, blank};
 
 class Menu{
     private:
@@ -28,7 +25,6 @@ class Menu{
     int menuoffY=0;
     int cellheight=0;
     int choices=0;
-    int cols=0;
     int currmenucount=0;
     int needleDX=4;
     int needleX=150;
@@ -43,7 +39,6 @@ class Menu{
     
 
     public:
-    ArtImage screenArt;
     int currGenre=0;
     int scrollX=0;
     bool pausedFlag=false;
@@ -57,11 +52,10 @@ class Menu{
         void drawMenu(const vector<Stationinfo>&, const vector<bool>& starred); //overloaded..pass stationinfo structure
                                                                             //starred[i] true = draw a favorite star
         int select_from_Menu();
-        void pulseCircle(bool flag);
         void draWAudioControls();
         void drawFrame();
-        void drawart(ArtImage currimage);
         void drawart(int currimage);
+        void drawLoadingDial();
         void drawPlayingStation(String playing);
 
         void clearMenu();
@@ -78,6 +72,8 @@ class Menu{
         void drawFavoriteMark(bool isFavorite);    //star in the corner of the play screen
         void drawEmptyFavorites();
         void drawServerError();
+        void drawSplash();
+        void drawSleepScreen();
 
 
 

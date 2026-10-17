@@ -1,8 +1,6 @@
 #include <Arduino.h>
-#include <Preferences.h>
 #include <SPI.h>
 #include <WiFi.h>
-#include <ArduinoOTA.h>
 #include <Adafruit_ILI9341.h>
 #include <Adafruit_GFX.h>
 #include <XPT2046_Touchscreen.h>
@@ -26,9 +24,6 @@
 #define Reset 32
 #define touch_CS 13
 
-uint8_t max_volume   = 21;
-uint8_t cur_volume =15;
-
 uint32_t vuLeft = 0;    //VU Meter values
 uint32_t vuRight = 0;
 
@@ -42,18 +37,6 @@ Tuner tuner;
 Menu menu(tft, ts); //send a handle to the tft & touch context to menu
 Airboss airboss(menu,tuner,audio,timer); //airboss needs control of assets 
                                         //everything but display
-
-double lastmenu=millis();   //start the clock
-float menuInterval=500.0;
-bool menuflag=false;
-
-double lastTouch=millis();
-float touchInterval=200.0;
-
-
-
-#define Push_Button A5
-
 
 //------------------------------------------------------------------------------
 void connectWiFi()  //connect to wifi.
@@ -102,73 +85,25 @@ void setup() {
     tft.fillScreen(ILI9341_BLACK);
     tft.setTextWrap(false); //disable wrapping tot he tft
 
+    menu.drawSplash();      //StreamBox splash stays up while wifi connects
+
 
     connectWiFi();      //go get some
 
-    if(WiFi.status()==WL_CONNECTED)     //enable over-the-air updates
-    {
-        ArduinoOTA.setHostname("classicalradio");
-        ArduinoOTA.setPassword(OTA_PASSWORD);
-        ArduinoOTA.onStart([]() { audio.stopSong(); Serial.println("OTA start"); });
-        ArduinoOTA.onEnd([]()   { Serial.println("\nOTA done"); });
-        ArduinoOTA.onError([](ota_error_t e) { Serial.printf("OTA error %u\n", e); });
-        ArduinoOTA.begin();
-    }
-
-    Stationinfo newStation; //prepare the variable that will receive a single new station
-
     ts.begin(); //touchscreen begin
-
-    
-
-
-
-
-    cur_volume=max_volume* 0.65;
 
     //register the meter call back function
     Audio::audio_info_callback = my_audio_info;
 
 
     audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-    audio.setVolume(cur_volume); // 0...21
+    audio.setVolume(tuner.currvol); // 0...21  tuner keeps track of the volume
     audio.settings.VU_LEVEL = true; //set up the meter
-
-    Serial.println("---------------");
-    Serial.println((newStation.Name).c_str());
-
-
-    
-    
-    
-
-
-
-    tft.setFont(&digital_712pt7b);
-    tft.setTextColor(ILI9341_CYAN);
-    
-    
-/*
-    for(int titles=0;titles<10;titles++)
-    {
-        tft.setCursor(10,50+(25*titles));
-        tft.println(tuner.stationList[titles].Name.c_str());
-        
-
-    }
-
-    //pinMode(Push_Button, INPUT_PULLUP);
-*/
-    vector<String> test={"some station","Another one","A longer station than oyu can imagine",
-        "one more..."};
-   // menu.drawMenu(tuner.stationList);    //test the handle!
 }
 
 //-----------------------------------------------------
 void loop() 
 {
-    ArduinoOTA.handle();    //listen for OTA uploads
-
     audio.loop();    // must hit this every time
 
     airboss.stateMonitor(vuLeft,vuRight); // manage program flow

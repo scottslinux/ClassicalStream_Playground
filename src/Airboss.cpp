@@ -10,7 +10,7 @@
 Airboss::Airboss(Menu& menu1, Tuner& tuner1, Audio& audio1,
                  Timer& mainsTimer): menu(menu1), tuner(tuner1), audio(audio1), timer(mainsTimer)
 {
-    radioState=States::Select_Genre;  //let's get started
+    radioState=States::Splash;  //let's get started
     lastMenu=millis();
     lastTouch=millis();
     lastdebounce=millis();
@@ -18,10 +18,11 @@ Airboss::Airboss(Menu& menu1, Tuner& tuner1, Audio& audio1,
     lastbuttonpress=millis();
     lasttuner=millis();
     lastvolume=millis();
-    lastMeter=millis();
     
     //start initializing the timers save the int timer index 
     meterindex=timer.addtimer(meterInterval,true,[this](){VUmanager();}); //VU Meter
+    idleindex=timer.addtimer(idleInterval,true,[this](){idleCheck();});    //sleep watchdog
+    lastActivity=millis();
 
     
 
@@ -54,6 +55,28 @@ if((millis()-lastMenu) > menuInterval)
 
     switch (radioState) //⁡⁢⁣⁣****this is the money*****/⁡
     {
+    //..................................
+    //          ⁡⁣⁢⁣​‌‌‍𝗦𝗽𝗹𝗮𝘀𝗵⁡​ StreamBox splash at power up
+    //          (drawn in setup() so it shows while wifi connects)
+
+    case States::Splash:
+    {
+        if(dirtyDisplay)
+        {
+            splashstart=millis();
+            dirtyDisplay=false;
+        }
+
+        pendingChoice=-999;     //no menu on this screen..throw away stray taps
+
+        if(millis()-splashstart > splashDuration)
+        {
+            radioState=States::Select_Genre;
+            dirtyDisplay=true;
+        }
+
+        break;
+    }
     //..................................
     //          ⁡⁣⁢⁣​‌‌‍𝗦𝗲𝗹𝗲𝗰𝘁_𝗚𝗲𝗻𝗿𝗲⁡​
     case States::Select_Genre:
@@ -109,7 +132,7 @@ if((millis()-lastMenu) > menuInterval)
         if(dirtyDisplay)
         {
             menu.clearMenu();
-            menu.drawart(4);    //draw radio tuner on display
+            menu.drawLoadingDial();    //draw radio tuner on display
             dirtyDisplay=false;
             animationstart=millis();
             dialanimation=true; //start the animation
@@ -145,7 +168,6 @@ if((millis()-lastMenu) > menuInterval)
             
 
             menu.drawFrame();
-            menu.drawart(ArtImage::blank);
             menu.drawMenu(tuner.stationList,buildStarFlags(tuner.stationList));
             menu.draWAudioControls();
 
@@ -167,6 +189,8 @@ if((millis()-lastMenu) > menuInterval)
             
 
             selectedStation=tuner.stationList[pendingChoice];
+            selectedStation.genre=menu.currGenre;   //remember the genre so a favorite keeps its art
+            favorites.updateGenre(selectedStation); //already a favorite? make sure its genre is right
 
             Serial.println(selectedStation.Name);
 
@@ -206,6 +230,35 @@ if((millis()-lastMenu) > menuInterval)
         break;
     }
     //---------------------------------------------------------
+    //          ⁡⁣⁢⁣​‌‌‍𝗚𝗼𝗶𝗻𝗴_𝗧𝗼_𝗦𝗹𝗲𝗲𝗽⁡​ no music for sleepTimeout
+    //          warn first..a tap during the warning keeps us awake
+
+    case States::Going_To_Sleep:
+    {
+        if(dirtyDisplay)
+        {
+            menu.clearMenu();
+            menu.drawSleepScreen();
+            sleepstart=millis();
+            dirtyDisplay=false;
+        }
+
+        pendingChoice=-999;     //no menu on this screen..throw away stray taps
+
+        if(lastActivity>sleepstart)     //screen was tapped after the warning went up
+        {
+            Serial.println("Tap..staying awake");
+            radioState=States::Select_Genre;
+            dirtyDisplay=true;
+            break;
+        }
+
+        if(millis()-sleepstart > sleepWarning)
+            goToSleep();    //does not return..wakes up as a fresh boot
+
+        break;
+    }
+    //---------------------------------------------------------
     //          ⁡⁣⁢⁣​‌‌‍𝗙𝗮𝘃𝗼𝗿𝗶𝘁𝗲𝘀_𝗗𝗶𝘀𝗽𝗹𝗮𝘆⁡​ list of saved stations
 
     case States::Favorites_Display:
@@ -231,6 +284,19 @@ if((millis()-lastMenu) > menuInterval)
             if(pendingChoice<(int)favList.size())   //only real lines
             {
                 selectedStation=favList[pendingChoice];
+
+                //older favorites were saved without a genre..ask radio-browser once
+                if(selectedStation.genre<0)
+                {
+                    selectedStation.genre=tuner.lookupGenre(selectedStation.stationuuid);
+                    favorites.updateGenre(selectedStation);     //saved so we only ask once
+                }
+
+                //show the art for the genre this favorite came from
+                if(selectedStation.genre>=0 && selectedStation.genre<(int)tuner.genres.size())
+                    menu.currGenre=selectedStation.genre;
+                else
+                    menu.currGenre=-1;      //unknown..show no art rather than the wrong art
 
                 Serial.println(selectedStation.Name);
 
@@ -338,15 +404,6 @@ if(volumeanimation)
 
 
 }
-/*
-//  ⁡⁣⁢⁣VU Meter Servicing⁡
-if(millis()-lastMeter >meterInterval &&VUleft>0 && radioState==States::Play_RadioStation)
-{
-    menu.drawMeter(VUleft,VUright);
-    lastMeter=millis();
-
-}
-*/
 
 
 
@@ -358,6 +415,8 @@ if((millis()-lastTouch)>touchInterval)
     int choice=menu.select_from_Menu();
     if(choice!=-999)//  only save real taps
     {
+        lastActivity=millis();  //a tap counts as activity..resets the sleep clock
+
         if(choice<=10)
             pendingChoice=choice;
 
@@ -483,6 +542,41 @@ if(VUL>0 && radioState==States::Play_RadioStation)
     menu.drawMeter(VUL,VUR);
     
 }
+}
+//----------------------------------------------------------
+//  called by the timer once a second. Music playing (not paused)
+//  counts as activity. After sleepTimeout with no activity, start
+//  the Going_To_Sleep warning screen.
+void Airboss::idleCheck()
+{
+    if(audio.isRunning())
+        lastActivity=millis();
+
+    //already asleep-ing or still starting up
+    if(radioState==States::Going_To_Sleep || radioState==States::Splash)
+        return;
+
+    if(millis()-lastActivity > sleepTimeout)
+    {
+        Serial.println("No music for 10 minutes..going to sleep");
+        radioState=States::Going_To_Sleep;
+        dirtyDisplay=true;
+    }
+}
+//----------------------------------------------------------
+//  deep sleep: ESP32 stops almost completely. Pressing the Feather's
+//  user button (GPIO 38) or reset wakes it, and it boots fresh
+//  (splash screen and all)
+void Airboss::goToSleep()
+{
+    audio.stopSong();
+    menu.clearMenu();       //leave a black screen
+
+    Serial.println("Sleeping. Press the button on GPIO 38 to wake.");
+    Serial.flush();         //let the message finish sending first
+
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_38,0);   //wake when button pulls pin LOW
+    esp_deep_sleep_start();
 }
 //----------------------------------------------------------
 void Airboss::begin()

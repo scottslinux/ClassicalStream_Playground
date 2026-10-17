@@ -75,6 +75,30 @@ void Favorites::deleteFavorites(const Stationinfo& station)
     }
 }
 //--------------------------------------------------------------
+//  if this station is a favorite and its stored genre is different,
+//  store the new one and save. (repairs favorites saved without a genre)
+void Favorites::updateGenre(const Stationinfo& station)
+{
+    if(station.genre<0)
+        return;     //nothing useful to store
+
+    for(size_t i=0; i<favoritesList.size(); i++)
+    {
+        if(sameStation(favoritesList[i],station))
+        {
+            if(favoritesList[i].genre!=station.genre)
+            {
+                favoritesList[i].genre=station.genre;
+                saveFavorites();
+
+                Serial.print("Updated genre for favorite: ");
+                Serial.println(station.Name);
+            }
+            return;
+        }
+    }
+}
+//--------------------------------------------------------------
 const std::vector<Stationinfo>& Favorites::getFavorites()
 {
     return favoritesList;
@@ -101,27 +125,14 @@ void Favorites::initializeFilesystem()
         {
             Serial.println("Failed to create /favorites");
         }
-
-        dumpFilesystem();
     }
 }
-//-------------------------------------------------------------
-void Favorites::dumpFilesystem()
-{
-    File outFile=LittleFS.open("/favorites.txt","r");
-    if(outFile){
-        String text= outFile.readString();
-        Serial.print(text);
-        outFile.close();
-    }
-}
-
 //-------------------------------------------------------------
 //  write every station in favoritesList out to the json file
 //  file looks like:
 //  [
-//    {"name":"...","url_resolved":"...","stationuuid":"..."},
-//    {"name":"...","url_resolved":"...","stationuuid":"..."}
+//    {"name":"...","url_resolved":"...","stationuuid":"...","genre":2},
+//    {"name":"...","url_resolved":"...","stationuuid":"...","genre":5}
 //  ]
 void Favorites::saveFavorites()
 {
@@ -135,6 +146,7 @@ void Favorites::saveFavorites()
         station["name"]=favoritesList[i].Name;
         station["url_resolved"]=favoritesList[i].url_resolved;
         station["stationuuid"]=favoritesList[i].stationuuid;
+        station["genre"]=favoritesList[i].genre;
     }
 
     File outFile=LittleFS.open(favoritesPath,"w");  //"w" replaces the old file
@@ -191,6 +203,12 @@ void Favorites::loadFavorites()
         fav.Name=station["name"].as<String>();
         fav.url_resolved=station["url_resolved"].as<String>();
         fav.stationuuid=station["stationuuid"].as<String>();
+
+        //favorites saved before genres were stored won't have one
+        if(station["genre"].is<int>())
+            fav.genre=station["genre"].as<int>();
+        else
+            fav.genre=-1;
 
         favoritesList.push_back(fav);
     }

@@ -9,13 +9,17 @@
 #include <violin200x150.h>
 #include <saxophone_135x180.h>
 #include <guitar_135x180.h>
-#include <microphone_130x173.h>
 #include <radiodial_240x87.h>
 #include <frame_240x320.h>
 #include <buttonPanel_240x55.h>
-#include <highlight45x55.h>
 #include <yellowring35x35.h>    //actually it is a blue ring
 #include <bpaused40x40.h>
+#include <pop_150x165.h>
+#include <smoothjazz_150x165.h>
+#include <oldies_150x165.h>
+#include <news_150x165.h>
+#include <talk_150x165.h>
+#include <splash_240x320.h>
 
 
 
@@ -28,7 +32,6 @@ Menu::Menu(Adafruit_ILI9341& tftdisplay, XPT2046_Touchscreen& touchSense):Displa
     menuoffX=(240-menuWidth)/2; 
     menuoffY=(320-menuHeight)/2;
 
-    screenArt=ArtImage::microphone;
     
 
 }
@@ -44,13 +47,11 @@ void Menu::drawMenu(const vector<String>& items)
 {
     choices=items.size();  //define table size
     choices=constrain(choices,0,10);    //limit it to 10 lines- may scroll later
-    cols=1;
     currmenucount=choices;
 
     uint16_t w,h;
     int16_t xpos,ypos;
 
-    uint16_t Violet=Display.color565(64,45,229);
     uint16_t BrightGreen=Display.color565(22,212,20);
 
     //determine the width of an average string in digital7 font
@@ -93,7 +94,6 @@ void Menu::drawMenu(const vector<Stationinfo>& items, const vector<bool>& starre
 {
     choices=items.size();  //define table size
     choices=constrain(choices,0,10);    //limit it to 10 lines- may scroll later
-    cols=1;
     currmenucount=choices;
 
     uint16_t Violet=Display.color565(122,111,220);
@@ -208,17 +208,6 @@ return -999;
 
 
 }
-//------------------------------------------------------------------------------
-void Menu::pulseCircle(bool flag)
-{
-    if(flag)
-      Display.fillCircle(223,25,5,ILI9341_GREEN);
-        else
-            Display.fillCircle(223,25,5,ILI9341_RED);
-           
-    
-}
-
 //------------------------------------------------
 void Menu::drawFrame()
 {
@@ -258,28 +247,6 @@ void Menu::draWAudioControls()
           
 
 }
-//-----------------------------------------------------
-void Menu::drawart(ArtImage currimage)
-{
-    switch (currimage)
-    {
-    case ArtImage::microphone:
-        Display.drawRGBBitmap(50,100,microphone_130x173,130,173);
-        break;
-    case ArtImage::guitar:
-        Display.drawRGBBitmap(50,100,guitar_135x180,130,180);
-        break;
-    case ArtImage::saxophone:
-        Display.drawRGBBitmap(50,100,saxophone_135x180,135,180);
-        break;
-    case ArtImage::violin:
-        Display.drawRGBBitmap(20,100,violin200x150,200,150);
-        break;
-
-    default:
-        break;
-    }
-}   
 //---------------------------------------------------------
 void Menu::drawart(int currimage)
 {
@@ -291,8 +258,8 @@ void Menu::drawart(int currimage)
     case 0:
         Display.drawRGBBitmap(50,50,guitar_135x180,135,180);
         break;
-    case 1:
-        Display.drawRGBBitmap(50,50,microphone_130x173,130,173);
+    case 1: //pop
+        Display.drawRGBBitmap(45,52,pop_150x165,150,165);
         break;
     case 2:
         Display.drawRGBBitmap(20,50,violin200x150,200,150);
@@ -301,20 +268,38 @@ void Menu::drawart(int currimage)
     case 3:
         Display.drawRGBBitmap(50,50,saxophone_135x180,135,180);
         break;
-    
-    case 4:
-    
-        Display.drawRGBBitmap(0,100,radiodial,240,87);
-        Display.setFont(&FreeSansBold18pt7b);
-        Display.setTextColor(ILI9341_WHITE);
-        Display.setCursor(25,220);
-        Display.print("Loading...");
-    
+
+    case 4: //smooth jazz
+        Display.drawRGBBitmap(45,52,smoothjazz_150x165,150,165);
+        break;
+
+    case 5: //oldies
+        Display.drawRGBBitmap(45,52,oldies_150x165,150,165);
+        break;
+
+    case 6: //news
+        Display.drawRGBBitmap(45,52,news_150x165,150,165);
+        break;
+
+    case 7: //talk
+        Display.drawRGBBitmap(45,52,talk_150x165,150,165);
+        break;
 
     default:
         break;
     }
-}   
+}
+//---------------------------------------------------------
+//  radio dial + "Loading..." while stations are fetched
+//  (this used to be drawart(4), but 4 is now the smooth jazz genre)
+void Menu::drawLoadingDial()
+{
+    Display.drawRGBBitmap(0,100,radiodial,240,87);
+    Display.setFont(&FreeSansBold18pt7b);
+    Display.setTextColor(ILI9341_WHITE);
+    Display.setCursor(25,220);
+    Display.print("Loading...");
+}
 //------------------------------------------------------------
 void Menu::clearMenu()
 {
@@ -373,7 +358,7 @@ void Menu::buttonPressed(int button, States state)
     Serial.printf("You pressed the %d button\nThe value of pausedFlag is %d\n",button,pausedFlag);
     
     //if play/pause press in the Play_RadioStation state
-    //getstate is a static method in airboss which reveals the cuurent state
+    //airboss passes in the current state
     if(button==0 && (state==States::Play_RadioStation))   
         {
             pausedFlag= (pausedFlag) ? 0 : 1;
@@ -580,6 +565,42 @@ void Menu::drawServerError()
     {
         Display.getTextBounds(lines[i],0,0,&xpos,&ypos,&w,&h);
         Display.setCursor(120-w/2,140+i*25);
+        Display.print(lines[i].c_str());
+    }
+}
+//------------------------------------------------------------
+//  StreamBox splash..full screen image made by tools/splash.py
+void Menu::drawSplash()
+{
+    Display.drawRGBBitmap(0,0,splash_240x320,240,320);
+}
+//------------------------------------------------------------
+//  crescent moon + message before deep sleep
+void Menu::drawSleepScreen()
+{
+    uint16_t w,h;
+    int16_t xpos,ypos;
+    uint16_t Gold=Display.color565(255,200,0);
+    uint16_t Violet=Display.color565(122,111,220);
+
+    //crescent moon: a gold circle with a black circle bitten out of it
+    Display.fillCircle(110,85,40,Gold);
+    Display.fillCircle(130,72,36,ILI9341_BLACK);
+
+    //a few stars
+    drawStar(170,60,7,Gold);
+    drawStar(190,105,5,Gold);
+    drawStar(60,40,4,Gold);
+
+    String lines[5]={"no music for","10 minutes","","going to sleep..","tap to stay awake"};
+
+    Display.setFont(&digital_712pt7b);
+    Display.setTextColor(Violet);
+
+    for(int i=0;i<5;i++)
+    {
+        Display.getTextBounds(lines[i],0,0,&xpos,&ypos,&w,&h);
+        Display.setCursor(120-w/2,165+i*25);
         Display.print(lines[i].c_str());
     }
 }

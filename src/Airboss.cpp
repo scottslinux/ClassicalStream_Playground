@@ -254,7 +254,29 @@ if((millis()-lastMenu) > menuInterval)
         }
 
         if(millis()-sleepstart > sleepWarning)
-            goToSleep();    //does not return..wakes up as a fresh boot
+        {
+            Serial.println("Asleep. Tap the screen to wake.");
+            audio.stopSong();
+            menu.clearMenu();       //leave a black screen
+            sleepstart=millis();    //taps after this wake us up
+            radioState=States::Asleep;
+        }
+
+        break;
+    }
+    //---------------------------------------------------------
+    //          ⁡⁣⁢⁣​‌‌‍𝗔𝘀𝗹𝗲𝗲𝗽⁡​ black screen, no music..any tap wakes us
+
+    case States::Asleep:
+    {
+        pendingChoice=-999;     //a tap here only wakes..not a menu pick
+
+        if(lastActivity>sleepstart)     //screen was tapped
+        {
+            Serial.println("Tap..waking up");
+            radioState=States::Select_Genre;
+            dirtyDisplay=true;
+        }
 
         break;
     }
@@ -420,7 +442,8 @@ if((millis()-lastTouch)>touchInterval)
         if(choice<=10)
             pendingChoice=choice;
 
-        if(choice>=100) //tool choice
+        //asleep: the tap just wakes us..don't press the volume/play buttons
+        if(choice>=100 && radioState!=States::Asleep) //tool choice
         {   pendingTool=choice-100;
             Serial.print("tool: ");
             Serial.println(pendingTool);
@@ -553,7 +576,8 @@ void Airboss::idleCheck()
         lastActivity=millis();
 
     //already asleep-ing or still starting up
-    if(radioState==States::Going_To_Sleep || radioState==States::Splash)
+    if(radioState==States::Going_To_Sleep || radioState==States::Asleep
+        || radioState==States::Splash)
         return;
 
     if(millis()-lastActivity > sleepTimeout)
@@ -562,21 +586,6 @@ void Airboss::idleCheck()
         radioState=States::Going_To_Sleep;
         dirtyDisplay=true;
     }
-}
-//----------------------------------------------------------
-//  deep sleep: ESP32 stops almost completely. Pressing the Feather's
-//  user button (GPIO 38) or reset wakes it, and it boots fresh
-//  (splash screen and all)
-void Airboss::goToSleep()
-{
-    audio.stopSong();
-    menu.clearMenu();       //leave a black screen
-
-    Serial.println("Sleeping. Press the button on GPIO 38 to wake.");
-    Serial.flush();         //let the message finish sending first
-
-    esp_sleep_enable_ext0_wakeup(GPIO_NUM_38,0);   //wake when button pulls pin LOW
-    esp_deep_sleep_start();
 }
 //----------------------------------------------------------
 void Airboss::begin()

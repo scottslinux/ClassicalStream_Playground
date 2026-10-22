@@ -89,7 +89,6 @@ class Airboss{
         void stateMonitor(uint32_t VUleft,uint32_t VUright);
         void VUmanager();
         void idleCheck();
-        void goToSleep();
         void begin();
         
 
